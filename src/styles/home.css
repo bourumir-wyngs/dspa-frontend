@@ -46,7 +46,7 @@
 
 .dspa-large{
   color: var(--text-color-sub-header);
-  font-size: var(--font-size-base);
+  font-size: calc(var(--font-size-base) + 6px);
 
 }
   
