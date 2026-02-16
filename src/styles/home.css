@@ -1,16 +1,25 @@
 
   .home-container {
-    background-image: url('./../protein_dynamics.gif');
-    background-size: contain; 
-    background-position: top center; 
-    background-repeat: no-repeat; 
     background-color: white;
+    position: relative;
     display: flex;
     flex-direction: column;
     align-items: center;
     justify-content: space-between; 
     padding-top: 60px;
     min-height: 100vh; 
+}
+
+.home-background-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: var(--home-bg-height, 100vh);
+    object-fit: fill;
+    object-position: top center;
+    z-index: 0;
+    pointer-events: none;
 }
 
   .logo-container {
@@ -157,10 +166,31 @@
   box-shadow: 0px 4px 8px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
-  justify-content: center;
-  align-items: center;
+  justify-content: flex-start;
+  align-items: stretch;
   font-size: var(--font-size-base) !important;
   font-family: var(--font-family-base);
+}
+
+.box-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.box-actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  align-items: center;
+}
+
+.box-actions button,
+.box-actions select,
+.box-actions input {
+  margin-top: 0;
 }
 
 @media (max-width: 600px) {
@@ -203,6 +233,17 @@
     background-color:var(--main-color);
     color: var(--bg-color);
     cursor: pointer;
+  }
+
+  .box button:disabled,
+  .box button[disabled] {
+    color: #f4d5d5;
+    pointer-events: none;
+  }
+
+  .disabled-tooltip {
+    display: block;
+    width: 100%;
   }
   
   .box button:hover {
@@ -313,15 +354,18 @@
   border-radius: var(--border-radius);
   background-color: var(--bg-color);
   cursor: pointer;
-  appearance: none;
+  text-align: left;
+  padding-right: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 20 20'%3E%3Cpath fill='%230A2F59' d='M5.5 7.5a1 1 0 0 1 1.4 0L10 10.6l3.1-3.1a1 1 0 1 1 1.4 1.4l-3.8 3.8a1 1 0 0 1-1.4 0L5.5 8.9a1 1 0 0 1 0-1.4Z'/%3E%3C/svg%3E");
   font-size: var(--font-size-base) !important;
   font-family: var(--font-family-base);
   background-repeat: no-repeat;
-  background-position: right 10px center;
+  background-position: right 12px center;
   background-size: 16px 16px;
   -webkit-appearance: none;
   -moz-appearance: none;
   appearance: none;
+  margin-bottom: 0.55em;
 }
 
 .condition-dropdown-home option {
@@ -331,3 +375,4 @@
   font-family: var(--font-family-base);
   padding: var(--padding);
 }
+

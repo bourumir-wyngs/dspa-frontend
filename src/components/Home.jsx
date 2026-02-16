@@ -1,8 +1,9 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import "@nightingale-elements/nightingale-sequence";
 import config from "../config.json";
 import { useLocation, useNavigate } from "react-router-dom";
 import ProteinSearchResults from './ProteinSearchResults.jsx';
+import proteinDynamics from "../protein_dynamics.gif";
 
 function Home() {
   const location = useLocation();
@@ -11,14 +12,20 @@ function Home() {
   const { searchResults: initialSearchResults } = location.state || {};
   const [searchResults, setSearchResults] = useState(initialSearchResults || null);
   const [conditions, setconditions] = useState([]);
+  const [selectedCondition, setSelectedCondition] = useState("");
+
+  const homeContainerRef = useRef(null);
+  const boxesContainerRef = useRef(null);
 
   const navigate = useNavigate();
 
   const handleconditionChange = (event) => {
-    const selectedCondition = event.target.value;
-    if (selectedCondition) {
-      navigate(`/condition/${selectedCondition}`);
-    }
+    setSelectedCondition(event.target.value);
+  };
+
+  const handleConditionSelect = () => {
+    if (!selectedCondition) return;
+    navigate(`/condition/${selectedCondition}`);
   };
 
   const handleSubmit = async (event) => {
@@ -73,6 +80,34 @@ function Home() {
     };
 }, []);
 
+  useEffect(() => {
+    const updateBackgroundHeight = () => {
+      const homeEl = homeContainerRef.current;
+      const boxesEl = boxesContainerRef.current;
+      if (!homeEl || !boxesEl) return;
+
+      const homeRect = homeEl.getBoundingClientRect();
+      const boxesRect = boxesEl.getBoundingClientRect();
+      const fontSizePx = Number.parseFloat(getComputedStyle(homeEl).fontSize) || 16;
+      const extraPx = fontSizePx * 4;
+      const heightPx = Math.max(0, (boxesRect.top - homeRect.top) + extraPx);
+
+      homeEl.style.setProperty("--home-bg-height", `${heightPx}px`);
+    };
+
+    updateBackgroundHeight();
+
+    const ro = new ResizeObserver(() => updateBackgroundHeight());
+    if (homeContainerRef.current) ro.observe(homeContainerRef.current);
+    if (boxesContainerRef.current) ro.observe(boxesContainerRef.current);
+
+    window.addEventListener("resize", updateBackgroundHeight);
+    return () => {
+      window.removeEventListener("resize", updateBackgroundHeight);
+      ro.disconnect();
+    };
+  }, []);
+
 
   useEffect(() => {
     if (location.state?.searchTerm) {
@@ -82,7 +117,14 @@ function Home() {
 
   return (
     <>
-      <main className="home-container">
+      <main className="home-container" ref={homeContainerRef}>
+
+        <img
+          className="home-background-image"
+          src={proteinDynamics}
+          alt=""
+          aria-hidden="true"
+        />
 
         <div className="dspa-text-blue">
 
@@ -92,24 +134,44 @@ function Home() {
           <span className="dspa-large">Explore dynamic changes in protein structure.</span>
         </div>
 
-        <div className="three-boxes-container">
+        <div className="three-boxes-container" ref={boxesContainerRef}>
           {/* Left Box - condition Dropdown */}
           <div className="box">
-            <label>Select Condition</label>
-            <p className="description">Choose a condition condition to explore its impact on protein structures.</p>
-            <select id="condition-select" onChange={handleconditionChange}  className="condition-dropdown-home">
-              <option value="">Select a Condition</option>
-              {conditions.map((condition, index) => (
+            <div className="box-content">
+              <label>Select Condition</label>
+              <p className="description">Choose a condition condition to explore its impact on protein structures.</p>
+            </div>
+
+            <div className="box-actions">
+              <select
+                id="condition-select"
+                onChange={handleconditionChange}
+                value={selectedCondition}
+                className="condition-dropdown-home"
+              >
+                <option value="">Select a Condition</option>
+                {conditions.map((condition, index) => (
                   <option key={index} value={condition}>{condition}</option>
-              ))}
-          </select>
+                ))}
+              </select>
+              <span
+                className="disabled-tooltip"
+                title={!selectedCondition ? "Please select the condition first" : ""}
+              >
+                <button type="button" onClick={handleConditionSelect} disabled={!selectedCondition}>
+                  Proceed with selection
+                </button>
+              </span>
+            </div>
           </div>
 
          {/* Middle Box - Protein Search */}
         <div className="box">
-          <form onSubmit={handleSubmit}>
+          <div className="box-content">
             <label>Protein Search</label>
             <p className="description">Search for proteins by name to view related structural dynamics data.</p>
+          </div>
+          <form className="box-actions" onSubmit={handleSubmit}>
             <input
               id="protein-search"
               type="text"
@@ -122,9 +184,13 @@ function Home() {
 
         {/* Right Box - Experiment Link */}
         <div className="box">
-          <label>Go to Experiments</label>
-          <p className="description">Explore all experiments related to protein structural changes.</p>
-          <button onClick={() => navigate("/experiments")}>View Experiments</button>
+          <div className="box-content">
+            <label>Go to Experiments</label>
+            <p className="description">Explore all experiments related to protein structural changes.</p>
+          </div>
+          <div className="box-actions">
+            <button onClick={() => navigate("/experiments")}>View Experiments</button>
+          </div>
         </div>
       </div>
 

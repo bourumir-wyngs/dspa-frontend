@@ -21,3 +21,6 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+/dspa-frontend/node_modules/.package-lock.json
+/dspa-frontend/package.json
+/dspa-frontend/package-lock.json
