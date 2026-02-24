@@ -11,6 +11,28 @@ import "@dspa-nightingale/nightingale-structure";
 import "@dspa-nightingale/nightingale-track";
 
 
+// Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
+// Each entry defines a threshold (score > threshold → use this color) checked top-down.
+// The last entry (threshold -Infinity) is the fallback for score ≤ 0 / no data.
+const LIP_COLOR_SCALE = [
+    { threshold: 7,          color: '#782162', rgb: [120, 33, 98],   label: '> 7' },
+    { threshold: 5,          color: '#da49a9', rgb: [218, 73, 169],  label: '5 - 7' },
+    { threshold: 4,          color: '#f2c0e1', rgb: [242, 192, 225], label: '4 - 5' },
+    { threshold: 3,          color: '#fbeaf5', rgb: [251, 234, 245], label: '3 - 4' },
+    { threshold: 0,          color: '#acc1db', rgb: [172, 193, 219], label: '0 - 3' },
+    { threshold: -Infinity,  color: '#000000', rgb: [0, 0, 0],       label: 'no LiP Score reported' },
+];
+
+/**
+ * Returns the color string for a given LiP score, using the shared LIP_COLOR_SCALE.
+ */
+function getLipScoreColor(score) {
+    for (const entry of LIP_COLOR_SCALE) {
+        if (score > entry.threshold) return entry.color;
+    }
+    return LIP_COLOR_SCALE[LIP_COLOR_SCALE.length - 1].color;
+}
+
 const defaultAttributes = {
     "min-width": "1200",
     length: 0, 
@@ -329,6 +351,16 @@ const NightingaleComponent = ({
                 const heatmapElement = document.getElementById("id-for-nightingale-sequence-heatmap");
                 if (heatmapElement && heatmapElement.setHeatmapData) {
                     heatmapElement.setHeatmapData(xDomain, yDomain, dataHeatmap);
+
+                    // Wait for heatmapInstance to be created, then apply the shared color scale
+                    const applyColor = () => {
+                        if (heatmapElement.heatmapInstance) {
+                            heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
+                        }
+                    };
+                    // heatmapInstance is created in updated() after requestUpdate, so defer
+                    requestAnimationFrame(applyColor);
+
                     setHeatmapReady(true);
                 }
             }
@@ -339,30 +371,30 @@ const NightingaleComponent = ({
     if (isHeatmapReady) {
         const heatmapElement = document.getElementById("id-for-nightingale-sequence-heatmap");
         heatmapElement.heatmapInstance.setTooltip((d, x, y, xIndex, yIndex) => {
-            let returnHTML = `
+            if (d.score === 0 || isNaN(d.score)) {
+                return `
+                    <div class="tooltip-container">
+                       <strong>no coverage</strong>
+                    </div>
+                    `;
+            } else
+                return `
                 <div class="tooltip-container">
                     Experiment: <a href="/experiment/${d.yValue}" target="_blank" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
                     Condition: <strong class="tooltip-highlight">${d.condition || "N/A"}</strong><br />
                     LiP Score: <strong>${d.score.toFixed(2)}</strong>
                 </div>`;
-            return returnHTML;
         });
     }
 
-    const legendData = [ 
-        { color: '#acc1db', label: '0 - 3' },
-        { color: '#fbeaf5', label: '3 - 4' },
-        { color: '#f2c0e1', label: '4 - 5' },
-        { color: '#da49a9', label: '5 - 7' },
-        { color: '#782162', label: '> 7' },
-        { color: '#CCCCCC', label: 'no LiP Score reported' }
-    ];
-    
+    // Legend derived from the shared LIP_COLOR_SCALE (reversed so lowest scores appear first)
+    const legendData = [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }));
+
     return (
         <div  id="nightingale-manager-container">
-            <p style={{ textAlign: 'center' }}>{proteinData?.proteinDescription}</p> 
+            <p style={{ textAlign: 'center' }}>{proteinData?.proteinDescription}</p>
             <div>
-             
+
                 <div className="volcano-plot-legend">
                     {legendData.map((item, index) => (
                         <div key={index} style={{ display: 'flex', alignItems: 'center' }}>
@@ -409,7 +441,7 @@ const NightingaleComponent = ({
                     </div>
                 )}
             </div>
-    
+
             {/* Nightingale Manager with Table of Tracks */}
             <nightingale-manager>
                 <div id="tooltip" className="tooltip"></div>
@@ -430,7 +462,7 @@ const NightingaleComponent = ({
 
                            {showHeatmap && (
                             <tr>
-                                <td >Score-Barcode</td>
+                                <td >Structural-Barcode</td>
                                 <td>
                                     <nightingale-sequence-heatmap
                                         ref={scoreBarcodeContainer}
@@ -442,7 +474,6 @@ const NightingaleComponent = ({
                                         display-start="1"
                                         display-end={sequenceLength}
                                         highlight-event="onmouseover"
-                                        color-range="#fbeaf5:-2,#782162:2"
                                     />
                                 </td>
                             </tr>
@@ -495,7 +526,7 @@ const NightingaleComponent = ({
                             </tr>
                         )}
 
-                       
+
                     </tbody>
                 </table>
             </nightingale-manager>
