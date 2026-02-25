@@ -25,6 +25,7 @@
 .highlighted {
     stroke: var(--text-color);
     stroke-width: 1.5px;
+    opacity: 0.5; /* do not hide the amino acid letter */
 }
 
 text.pep-key-label, text.protein-name-label {
