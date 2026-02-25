@@ -26,6 +26,14 @@ import "./styles/experimentOverview.css";
 import "./styles/nightingale.css";
 import "./styles/impressum.css";
 
+// Suppress benign ResizeObserver loop error that triggers CRA's error overlay
+// See https://github.com/WICG/resize-observer/issues/38
+window.addEventListener('error', (e) => {
+  if (e.message === 'ResizeObserver loop completed with undelivered notifications.') {
+    e.stopImmediatePropagation();
+  }
+});
+
 const root = createRoot(document.getElementById("root"));
 
 const NotFound = () => <div>Page not found.</div>;
