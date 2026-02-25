@@ -452,7 +452,10 @@ const NightingaleComponent = ({
                     <tbody>
                         <tr >
                             <td ></td>
-                            <td><nightingale-navigation ref={navigationRef}/></td>
+                            <td>
+                                <style>{`nightingale-navigation .start-label, .end-label { visibility: hidden; }`}</style>
+                                <nightingale-navigation ref={navigationRef}/>
+                            </td>
                         </tr>
 
                         <tr>
