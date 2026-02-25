@@ -84,6 +84,7 @@ const NightingaleComponent = ({
         : proteinData.lipscoreList.map(entry => entry.experimentID);
 
     const [trackHeight, setTrackHeight] = useState(null);
+    const lastLayoutHeightsRef = useRef({ structureHeight: null, trackHeight: null });
 
 
     const sequenceLength = proteinData.proteinSequence.length;
@@ -115,22 +116,26 @@ const NightingaleComponent = ({
 
     useEffect(() => {
         const updateHeight = () => {
-            const managerContainer = document.getElementById("nightingale-manager-container");
-            if (managerContainer) {
-                const totalHeight = managerContainer.getBoundingClientRect().height;
-                const structureHeight = totalHeight * 0.4;
- 
-                if (structureRef.current) {
-                    structureRef.current.setAttribute('style', `--custom-structure-height: ${structureHeight}px;`);
-                    structureRef.current.style.setProperty('--custom-structure-height', `${structureHeight}px`);
-                }
-          
-                const tracks_len = visibleTracks.length + 2;
-                const availableTrackHeight = structureHeight;
-                const dynamicTrackHeight = Math.min(Math.max(
-                    availableTrackHeight / ( tracks_len|| 1), 
-                    20
-                ), 30);
+            const layoutContainer = containerRef?.current?.parentElement;
+            const containerRect = layoutContainer?.getBoundingClientRect();
+            const baseHeight = containerRect?.height || window.innerHeight;
+            const structureHeight = baseHeight * 0.4;
+
+            const lastHeights = lastLayoutHeightsRef.current;
+            if (structureRef.current && lastHeights.structureHeight !== structureHeight) {
+                structureRef.current.style.setProperty('--custom-structure-height', `${structureHeight}px`);
+                lastHeights.structureHeight = structureHeight;
+            }
+
+            const tracks_len = visibleTracks.length + 2;
+            const availableTrackHeight = structureHeight;
+            const dynamicTrackHeight = Math.min(Math.max(
+                availableTrackHeight / (tracks_len || 1),
+                20
+            ), 30);
+
+            if (lastHeights.trackHeight !== dynamicTrackHeight) {
+                lastHeights.trackHeight = dynamicTrackHeight;
                 setTrackHeight(dynamicTrackHeight);
             }
         };
@@ -196,6 +201,10 @@ const NightingaleComponent = ({
     }, [proteinData, trackHeight]);
 
     useEffect(() => {
+        if (!trackHeight || !proteinData?.featuresData?.sequence || !sequenceRef.current) {
+            return;
+        }
+
         const tooltip = document.getElementById("tooltip");
         if (!tooltip) {
               console.error("Tooltip element not found!");
@@ -284,7 +293,7 @@ const NightingaleComponent = ({
         });
     
         updateTracks();
-    }, [mappedFeatures]);
+    }, [mappedFeatures, trackHeight, proteinData?.featuresData?.sequence]);
 
 
     const handleCustomEvent = (e) => {
@@ -292,6 +301,10 @@ const NightingaleComponent = ({
       };
 
     useEffect(() => {
+        if (!proteinName || !selectedPdbId) {
+            return;
+        }
+
         if (structureRef.current) {
             structureRef.current.setAttribute('protein-accession', proteinName);
             structureRef.current.setAttribute('structure-id', selectedPdbId);
@@ -451,7 +464,7 @@ const NightingaleComponent = ({
                         <select
                             id="experiment-dropdown"
                             value={selectedExperiment}
-                            onChange={handleExperimentClick}
+                            onChange={(event) => handleExperimentClick(event.target.value)}
                         >
                             {experimentIDsList.map((experimentID) => (
                                 <option key={experimentID} value={experimentID}>
