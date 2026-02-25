@@ -365,7 +365,40 @@ const NightingaleComponent = ({
                 }
             }
         });
-    }, [proteinData.differentialAbundanceData, proteinData.experimentMetaData]);
+    }, [proteinData.differentialAbundanceData, proteinData.experimentMetaData, sequenceLength]);
+
+    // Toggle tick visibility: hide ticks when sequence letters are visible, show when hidden
+    useEffect(() => {
+        const seqEl = sequenceRef.current;
+        if (!seqEl) return;
+
+        const updateTickVisibility = () => {
+            const svg = seqEl.shadowRoot
+                ? seqEl.shadowRoot.querySelector('svg')
+                : seqEl.querySelector('svg');
+            if (!svg) return;
+            const hasLetters = svg.querySelectorAll('text.base').length > 0;
+            svg.querySelectorAll('.tick text').forEach(tick => {
+                tick.style.visibility = hasLetters ? 'hidden' : 'visible';
+            });
+        };
+
+        const observer = new MutationObserver(updateTickVisibility);
+        const startObserving = () => {
+            const svg = seqEl.shadowRoot
+                ? seqEl.shadowRoot.querySelector('svg')
+                : seqEl.querySelector('svg');
+            if (svg) {
+                observer.observe(svg, { childList: true, subtree: true });
+                updateTickVisibility();
+            } else {
+                requestAnimationFrame(startObserving);
+            }
+        };
+        startObserving();
+
+        return () => observer.disconnect();
+    }, [mappedFeatures]);
 
 
     if (isHeatmapReady) {
