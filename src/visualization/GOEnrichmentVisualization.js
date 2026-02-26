@@ -107,7 +107,8 @@ const GOEnrichmentVisualization = ({ goEnrichmentData, onProteinSelect=null }) =
             .style("text-anchor", "middle")
             .call(wrapText, xScale.bandwidth());
 
-        svg.append("g").call(d3.axisLeft(yScale));
+        const yTickValues = yScale.ticks().filter((_, i) => i % 2 === 0); // draw every second tick
+        svg.append("g").call(d3.axisLeft(yScale).tickValues(yTickValues));
 
         const barGroups = svg.selectAll("g.bar")
             .data(groupedData)
