@@ -521,16 +521,11 @@ table {
 
 
 .go-enrichment-visualization{
-    display: flex;
     justify-content: center;
-    align-items: center;
-    width: 100%;
-    min-height: 400px;
     position: relative;
-    overflow: visible;
-    gap: var(--gap);
+    overflow-x: auto;
+    overflow-y: hidden;
     font-size: var(--font-size-base) !important;
-    
 }
 
 .tab-content {
