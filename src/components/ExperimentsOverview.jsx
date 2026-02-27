@@ -155,7 +155,9 @@ const ExperimentOverview = () => {
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
           <td>{experiment.protease || 'N/A'}</td>
-          <td><a href={experiment.doi}>{experiment.doi || 'N/A'}</a></td>
+          <td>
+            {experiment.doi ? <a href={experiment.doi}>{experiment.doi}</a>: 'N/A'}
+          </td>
         </tr>
       ))}
 </tbody>
