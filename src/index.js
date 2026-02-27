@@ -26,20 +26,6 @@ import "./styles/experimentOverview.css";
 import "./styles/nightingale.css";
 import "./styles/impressum.css";
 
-// Suppress benign ResizeObserver loop errors that trigger CRA's error overlay in dev.
-// See https://github.com/WICG/resize-observer/issues/38
-if (process.env.NODE_ENV === 'development') {
-  window.addEventListener('error', (e) => {
-    const msg = String(e?.message || '');
-    if (
-      msg === 'ResizeObserver loop completed with undelivered notifications.' ||
-      msg === 'ResizeObserver loop limit exceeded' ||
-      msg.includes('ResizeObserver loop')
-    ) {
-      e.stopImmediatePropagation();
-    }
-  });
-}
 
 const root = createRoot(document.getElementById("root"));
 

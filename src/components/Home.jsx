@@ -81,7 +81,6 @@ function Home() {
 }, []);
 
   useEffect(() => {
-    let rafId = null;
     const updateBackgroundHeight = () => {
       const homeEl = homeContainerRef.current;
       const boxesEl = boxesContainerRef.current;
@@ -93,35 +92,22 @@ function Home() {
       const extraPx = fontSizePx * 4;
       const heightPx = Math.max(0, (boxesRect.top - homeRect.top) + extraPx);
 
-      const nextValue = `${Math.round(heightPx)}px`;
-      const currentValue = homeEl.style.getPropertyValue("--home-bg-height");
-      if (currentValue !== nextValue) {
-        homeEl.style.setProperty("--home-bg-height", nextValue);
-      }
+      homeEl.style.setProperty("--home-bg-height", `${heightPx}px`);
     };
 
-    const scheduleUpdateBackgroundHeight = () => {
-      if (rafId != null) return;
-      rafId = window.requestAnimationFrame(() => {
-        rafId = null;
+    updateBackgroundHeight();
+
+    const ro = new ResizeObserver(() => {
+      window.requestAnimationFrame(() => {
         updateBackgroundHeight();
       });
-    };
-
-    scheduleUpdateBackgroundHeight();
-
-    const ro = new ResizeObserver(() => scheduleUpdateBackgroundHeight());
-    if (homeContainerRef.current) ro.observe(homeContainerRef.current);
+    });
     if (boxesContainerRef.current) ro.observe(boxesContainerRef.current);
 
-    window.addEventListener("resize", scheduleUpdateBackgroundHeight);
+    window.addEventListener("resize", updateBackgroundHeight);
     return () => {
-      window.removeEventListener("resize", scheduleUpdateBackgroundHeight);
+      window.removeEventListener("resize", updateBackgroundHeight);
       ro.disconnect();
-      if (rafId != null) {
-        window.cancelAnimationFrame(rafId);
-        rafId = null;
-      }
     };
   }, []);
 

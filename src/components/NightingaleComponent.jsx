@@ -75,7 +75,7 @@ const NightingaleComponent = ({
     const scoreBarcodeContainer = useRef(null);
     
     const [selectedButton, setSelectedButton] = useState(null);
-    const [selectedExperiment, setSelectedExperiment] = useState(null);
+    const [selectedExperiment, setSelectedExperiment] = useState('');
     const [isHeatmapReady, setHeatmapReady] = useState(false);
     const experimentIDsList = passedExperimentIDs?.length > 0 
     ? passedExperimentIDs 
@@ -115,44 +115,51 @@ const NightingaleComponent = ({
 
 
     useEffect(() => {
+        let rafId = null;
+
         const updateHeight = () => {
-            const layoutContainer = containerRef?.current?.parentElement;
-            const containerRect = layoutContainer?.getBoundingClientRect();
-            const baseHeight = containerRect?.height || window.innerHeight;
-            const structureHeight = baseHeight * 0.4;
-
-            const lastHeights = lastLayoutHeightsRef.current;
-            if (structureRef.current && lastHeights.structureHeight !== structureHeight) {
-                structureRef.current.style.setProperty('--custom-structure-height', `${structureHeight}px`);
-                lastHeights.structureHeight = structureHeight;
-            }
-
-            const tracks_len = visibleTracks.length + 2;
-            const availableTrackHeight = structureHeight;
-            const dynamicTrackHeight = Math.min(Math.max(
-                availableTrackHeight / (tracks_len || 1),
-                20
-            ), 30);
-
-            if (lastHeights.trackHeight !== dynamicTrackHeight) {
-                lastHeights.trackHeight = dynamicTrackHeight;
-                setTrackHeight(dynamicTrackHeight);
-            }
+            if (rafId !== null) return;
+            rafId = window.requestAnimationFrame(() => {
+                rafId = null;
+                const layoutContainer = containerRef?.current?.parentElement;
+                const containerRect = layoutContainer?.getBoundingClientRect();
+                const baseHeight = containerRect?.height || window.innerHeight;
+                const structureHeight = baseHeight * 0.4;
+                const lastHeights = lastLayoutHeightsRef.current;
+                
+                if (structureRef.current && lastHeights.structureHeight !== structureHeight) {
+                    structureRef.current.style.setProperty('--custom-structure-height', `${structureHeight}px`);
+                    lastHeights.structureHeight = structureHeight;
+                }
+                
+                const tracks_len = visibleTracks.length + 2;
+                const availableTrackHeight = structureHeight;
+                const dynamicTrackHeight = Math.min(Math.max(
+                    availableTrackHeight / (tracks_len || 1),
+                    20
+                ), 30);
+                
+                if (lastHeights.trackHeight !== dynamicTrackHeight) {
+                    lastHeights.trackHeight = dynamicTrackHeight;
+                    setTrackHeight(dynamicTrackHeight);
+                }
+            });
         };
-    
+
         const handleTouchStart = () => {
             updateHeight();
         };
-    
+
         window.addEventListener("resize", updateHeight);
         window.addEventListener("touchstart", handleTouchStart, { passive: true });
         updateHeight();
-    
+
         return () => {
+            if (rafId !== null) window.cancelAnimationFrame(rafId);
             window.removeEventListener("resize", updateHeight);
             window.removeEventListener("touchstart", handleTouchStart);
         };
-    }, [visibleTracks.length]); 
+    }, [visibleTracks.length]);
      
     const checkDimensions = (element) => {
         if (element) {
@@ -173,7 +180,7 @@ const NightingaleComponent = ({
         let lipScoreString = JSON.stringify(Array(sequenceLength).fill(-1));
 
         if (experimentID === selectedExperiment) {
-            setSelectedExperiment(null);
+            setSelectedExperiment('');
         } else {
             setSelectedExperiment(experimentID);
             const lipScoreArray = getLipScoreDataByExperimentID(experimentID);
@@ -186,6 +193,19 @@ const NightingaleComponent = ({
             setRefreshStructureKey(refreshStructureKey => refreshStructureKey + 1);
         } 
     };
+
+    useEffect(() => {
+        if (!experimentIDsList || experimentIDsList.length === 0) return;
+        if (selectedExperiment !== '') return;
+
+        const defaultExperimentId = experimentIDsList[0];
+        setSelectedExperiment(defaultExperimentId);
+
+        const lipScoreArray = getLipScoreDataByExperimentID(defaultExperimentId);
+        if (lipScoreArray) {
+            setLipscoreString(JSON.stringify(lipScoreArray));
+        }
+    }, [experimentIDsList, selectedExperiment]);
 
     useEffect(() => {
         if (proteinData?.featuresData?.features && trackHeight) {
@@ -466,6 +486,7 @@ const NightingaleComponent = ({
                             value={selectedExperiment}
                             onChange={(event) => handleExperimentClick(event.target.value)}
                         >
+                            <option value="">None</option>
                             {experimentIDsList.map((experimentID) => (
                                 <option key={experimentID} value={experimentID}>
                                     {`Experiment ${experimentID}`}
@@ -491,14 +512,14 @@ const NightingaleComponent = ({
             {/* Nightingale Manager with Table of Tracks */}
             <nightingale-manager>
                 <div id="tooltip" className="tooltip"></div>
-                <div>
-                    <nightingale-structure key={refreshStructureKey} ref={structureRef} />
+                <div style={{ width: '100%', overflow: 'hidden' }}>
+                    <nightingale-structure key={refreshStructureKey} ref={structureRef} style={{ display: 'block', width: '100%' }} />
                 </div>
-                <table>
+                <table style={{ width: '100%', tableLayout: 'fixed' }}>
                     <tbody>
                         <tr >
-                            <td ></td>
-                            <td>
+                            <td style={{ width: '150px' }}></td>
+                            <td style={{ width: '100%', overflow: 'hidden' }}>
                                 <style>{`nightingale-navigation .start-label, .end-label { visibility: hidden; }`}</style>
                                 <nightingale-navigation ref={navigationRef}/>
                             </td>
@@ -506,13 +527,13 @@ const NightingaleComponent = ({
 
                         <tr>
                             <td >Sequence</td>
-                            <td><nightingale-sequence ref={sequenceRef} /></td>
+                            <td style={{ width: '100%', overflow: 'hidden' }}><nightingale-sequence ref={sequenceRef} style={{ display: 'block', width: '100%' }} /></td>
                         </tr>
 
                            {showHeatmap && (
                             <tr>
                                 <td >Structural-Barcode</td>
-                                <td>
+                                <td style={{ width: '100%', overflow: 'hidden' }}>
                                     <nightingale-sequence-heatmap
                                         ref={scoreBarcodeContainer}
                                         id="id-for-nightingale-sequence-heatmap"
@@ -523,6 +544,7 @@ const NightingaleComponent = ({
                                         display-start="1"
                                         display-end={sequenceLength}
                                         highlight-event="onmouseover"
+                                        style={{ display: 'block', width: '100%' }}
                                     />
                                 </td>
                             </tr>
