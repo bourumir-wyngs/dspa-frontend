@@ -8,15 +8,15 @@ const ExperimentOverview = () => {
   const [experiments, setExperiments] = useState([]);
   const [filteredExperiments, setFilteredExperiments] = useState([]);
   
-  const [taxonomyOptions, setTaxonomyOptions] = useState([]);
   const [perturbationOptions, setPerturbationOptions] = useState([]);
   const [conditionOptions, setConditionOptions] = useState([]);
   const [proteaseOptions, setProteaseOptions] = useState([]);
+  const [organismOptions, setOrganismOptions] = useState([]);
   
-  const [selectedTaxonomies, setSelectedTaxonomies] = useState([]);
   const [selectedPerturbation, setSelectedPerturbation] = useState([]);
   const [selectedCondition, setSelectedCondition] = useState([]);
   const [selectedProtease, setSelectedProtease] = useState([]);
+  const [selectedOrganisms, setSelectedOrganisms] = useState([]);
  
   const navigate = useNavigate();
 
@@ -29,14 +29,14 @@ const ExperimentOverview = () => {
           setFilteredExperiments(data.experiments);
 
           const uniquePerturbations = [...new Set(data.experiments.map(exp => exp.perturbation).filter(perturbation => perturbation))];
-          const uniqueTaxonomies = [...new Set(data.experiments.map(exp => exp.taxonomy_id).filter(taxonomy => taxonomy))];
           const uniqueCondition = [...new Set(data.experiments.map(exp => exp.condition).filter(condition => condition))];
           const uniqueProtease= [...new Set(data.experiments.map(exp => exp.protease).filter(protease => protease))];
+          const uniqueOrganisms = [...new Set(data.experiments.map(exp => exp.organism).filter(organism => organism))];
           
           setPerturbationOptions(uniquePerturbations.map(perturbation => ({ value: perturbation, label: perturbation })));
-          setTaxonomyOptions(uniqueTaxonomies.map(taxonomy => ({ value: taxonomy, label: taxonomy })));
           setConditionOptions(uniqueCondition.map(condition => ({ value: condition, label: condition })));
           setProteaseOptions(uniqueProtease.map(protease => ({ value: protease, label: protease })));
+          setOrganismOptions(uniqueOrganisms.map(organism => ({ value: organism, label: organism })));
 
         } else {
           console.error('Expected an array of experiments but got:', data);
@@ -49,40 +49,40 @@ const ExperimentOverview = () => {
   const handleRowClick = (experiment) => {
     navigate(`/experiment/${experiment.dynaprot_experiment}`);
   };
-
-  const handleTaxonomyFilterChange = (selectedOptions) => {
-    setSelectedTaxonomies(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedCondition, selectedProtease, selectedOptions || []);
-  };
   
   const handlePerturbationFilterChange = (selectedOptions) => {
     setSelectedPerturbation(selectedOptions || []);
-    applyFilters(selectedOptions || [], selectedCondition, selectedProtease, selectedTaxonomies);
+    applyFilters(selectedOptions || [], selectedCondition, selectedProtease, selectedOrganisms);
   };
   
   const handleConditionFilterChange = (selectedOptions) => {
     setSelectedCondition(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedOptions || [], selectedProtease, selectedTaxonomies);
+    applyFilters(selectedPerturbation, selectedOptions || [], selectedProtease, selectedOrganisms);
   };
   
   const handleProteaseFilterChange = (selectedOptions) => {
     setSelectedProtease(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedCondition, selectedOptions || [], selectedTaxonomies);
+    applyFilters(selectedPerturbation, selectedCondition, selectedOptions || [], selectedOrganisms);
+  };
+
+  const handleOrganismFilterChange = (selectedOptions) => {
+    setSelectedOrganisms(selectedOptions || []);
+    applyFilters(selectedPerturbation, selectedCondition, selectedProtease, selectedOptions || []);
   };
   
-  const applyFilters = (selectedPerturbation, selectedCondition, selectedProtease, selectedTaxonomies) => {
+  const applyFilters = (selectedPerturbation, selectedCondition, selectedProtease, selectedOrganisms) => {
     // Extract selected values or default to empty array
     const selectedPerturbationValues = (selectedPerturbation || []).map(option => option.value);
-    const selectedTaxonomyValues = (selectedTaxonomies || []).map(option => option.value);
     const selectedConditionValues = (selectedCondition || []).map(option => option.value);
     const selectedProteaseValues = (selectedProtease || []).map(option => option.value);
+    const selectedOrganismValues = (selectedOrganisms || []).map(option => option.value);
   
     // Filter experiments based on selected values
     const filtered = experiments.filter(experiment =>
       (selectedPerturbationValues.length === 0 || selectedPerturbationValues.includes(experiment.perturbation)) &&
-      (selectedTaxonomyValues.length === 0 || selectedTaxonomyValues.includes(experiment.taxonomy_id)) &&
       (selectedConditionValues.length === 0 || selectedConditionValues.includes(experiment.condition)) &&
-      (selectedProteaseValues.length === 0 || selectedProteaseValues.includes(experiment.protease))
+      (selectedProteaseValues.length === 0 || selectedProteaseValues.includes(experiment.protease)) &&
+      (selectedOrganismValues.length === 0 || selectedOrganismValues.includes(experiment.organism))
     );
   
     setFilteredExperiments(filtered);
@@ -95,15 +95,16 @@ const ExperimentOverview = () => {
       <thead>
         <tr>
           <th>DynaProt Experiment ID </th>
+
           <th>
-            Taxonomy ID
+            Organism
             <Select
-              isMulti
-              options={taxonomyOptions}
-              value={selectedTaxonomies}
-              onChange={handleTaxonomyFilterChange}
-              placeholder="Filter by taxonomy ID..."
-              className="filter-select"
+                isMulti
+                options={organismOptions}
+                value={selectedOrganisms}
+                onChange={handleOrganismFilterChange}
+                placeholder="Filter by organism..."
+                className="filter-select"
             />
           </th>
 
@@ -143,7 +144,6 @@ const ExperimentOverview = () => {
             />
           </th>
 
-          <th>Organism</th>
           <th>DOI</th>
         </tr>
       </thead>
@@ -151,7 +151,6 @@ const ExperimentOverview = () => {
       {filteredExperiments.map(experiment => (
         <tr key={experiment.dynaprot_experiment} onClick={() => handleRowClick(experiment)}>
           <td>{experiment.dynaprot_experiment}</td>
-          <td>{experiment.taxonomy_id}</td>
           <td>{experiment.organism || 'N/A'}</td>
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
