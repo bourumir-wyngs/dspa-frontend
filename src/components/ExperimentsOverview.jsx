@@ -142,6 +142,7 @@ const ExperimentOverview = () => {
               className="filter-select"
             />
           </th>
+
           <th>Organism</th>
           <th>DOI</th>
         </tr>
@@ -151,11 +152,11 @@ const ExperimentOverview = () => {
         <tr key={experiment.dynaprot_experiment} onClick={() => handleRowClick(experiment)}>
           <td>{experiment.dynaprot_experiment}</td>
           <td>{experiment.taxonomy_id}</td>
+          <td>{experiment.organism || 'N/A'}</td>
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
           <td>{experiment.protease || 'N/A'}</td>
-          <td>TODO</td>
-          <td><a href={experiment.doi}>{experiment.doi}</a></td>
+          <td><a href={experiment.doi}>{experiment.doi || 'N/A'}</a></td>
         </tr>
       ))}
 </tbody>
