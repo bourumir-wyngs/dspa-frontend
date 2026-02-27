@@ -142,9 +142,8 @@ const ExperimentOverview = () => {
               className="filter-select"
             />
           </th>
-
-
-          <th>Submission Timestamp</th>
+          <th>Organism</th>
+          <th>DOI</th>
         </tr>
       </thead>
       <tbody>
@@ -155,7 +154,8 @@ const ExperimentOverview = () => {
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
           <td>{experiment.protease || 'N/A'}</td>
-          <td>{experiment.submission_timestamp}</td>
+          <td>TODO</td>
+          <td><a href={experiment.doi}>{experiment.doi}</a></td>
         </tr>
       ))}
 </tbody>
