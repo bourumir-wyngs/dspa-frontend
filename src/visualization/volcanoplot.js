@@ -47,12 +47,19 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
     const container = d3.select(svgRef.current);
   
     container.selectAll(className)
+      .classed('is-hovered', shouldHighlight)
       .attr('fill', function(d) {
         return shouldHighlight ? COLOR_SELECTED_PEPTIDE : getBaseFill(d);
       })
       .attr('r', shouldHighlight ? 4.5 : 3)
-      .attr('stroke', shouldHighlight ? COLOR_SELECTED_PEPTIDE : 'none')
-      .attr('stroke-width', shouldHighlight ? 1.5 : 0)
+      .attr('stroke', function(d) {
+         if (shouldHighlight) return COLOR_SELECTED_PEPTIDE;
+         return d.pg_protein_accessions === highlightedProtein ? 'black' : 'none';
+      })
+      .attr('stroke-width', function(d) {
+         if (shouldHighlight) return 1.5;
+         return d.pg_protein_accessions === highlightedProtein ? 1.5 : 0;
+      })
       .each(function() {
         if (shouldHighlight) {
           d3.select(this).raise();
@@ -229,17 +236,26 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         .attr("cx", d => x(d.diff))
         .attr("cy", d => y(-Math.log10(d.adj_pval)))
         .attr("r", 3)
-        .attr("class", d => `pep-key-${d.pep_grouping_key.replace(/\s+/g, '-')}`)
+        .attr("class", d => `pep-key-${cssSafeKey(d.pep_grouping_key)}`)
         .style("fill", d => getBaseFill(d))
+        .attr("stroke", d => d.pg_protein_accessions === highlightedProtein ? 'black' : 'none')
+        .attr("stroke-width", d => d.pg_protein_accessions === highlightedProtein ? 1.5 : 0)
         .each(function(d) {
           if (d.pg_protein_accessions === highlightedProtein) {
             d3.select(this).raise(); 
           }
         })
         .on("mouseover", function (event, d) {
+          container.selectAll('.is-hovered')
+            .classed('is-hovered', false)
+            .attr('fill', c => getBaseFill(c))
+            .attr('r', 3)
+            .attr('stroke', c => c.pg_protein_accessions === highlightedProtein ? 'black' : 'none')
+            .attr('stroke-width', c => c.pg_protein_accessions === highlightedProtein ? 1.5 : 0);
         
           tooltipBackground.attr("width", 0).attr("height", 0);
           d3.select(this)
+            .classed('is-hovered', true)
 			.attr("fill", COLOR_SELECTED_PEPTIDE)
             .attr("r", 4.5)
 			.attr("stroke", COLOR_SELECTED_PEPTIDE)
@@ -260,9 +276,11 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         
         .on("mouseout", function (event, d) {
           d3.select(this)
+            .classed('is-hovered', false)
             .attr("fill", getBaseFill(d))
             .attr("r", 3)
-            .attr("stroke", "none");
+            .attr("stroke", d.pg_protein_accessions === highlightedProtein ? 'black' : 'none')
+            .attr("stroke-width", d.pg_protein_accessions === highlightedProtein ? 1.5 : 0);
 
           highlightOthers(d.pep_grouping_key, false);
           d3.select("#html-tooltip")
