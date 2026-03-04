@@ -518,6 +518,13 @@ table {
     border: 2px solid #cc00cc; 
     padding: var(--padding); 
     border-radius: var(--border-radius); 
+    box-sizing: border-box;
+    /* Reserve a stable spot for the volcano “info box” so the plot grid doesn't jump */
+    min-height: 56px;
+    width: 100%;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 120ms ease;
 }
 
 

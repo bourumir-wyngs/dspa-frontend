@@ -2,6 +2,23 @@ import * as d3 from 'd3';
 import React, { useEffect, useRef, useState } from 'react';
 
 
+const COLOR_HIGHLIGHTED_PROTEIN = '#ffa500';
+const COLOR_UP = '#d62728';
+const COLOR_DOWN = '#1f77b4';
+const COLOR_OTHER = '#d9d9d9';
+
+// Significance cutoffs for volcano plots
+const CUTOFF_ADJ_P = 0.05;
+const CUTOFF_LOG2FC = 1;
+const COLOR_CUTOFF_LINE = '#7f7f7f';
+
+// Hover / selection color for peptides
+const COLOR_SELECTED_PEPTIDE = 'rgba(54,204,0,0.69)';
+
+const COLOR_TOOLTIP_BG = 'white';
+const COLOR_TOOLTIP_BORDER = 'black';
+
+
 
 
 const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) => {
@@ -13,6 +30,17 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
   function cssSafeKey(key) {
     return key.replace(/[^\w-]/g, '_'); 
   }
+
+  function getBaseFill(d) {
+    if (d.pg_protein_accessions === highlightedProtein) return COLOR_HIGHLIGHTED_PROTEIN;
+
+    const isSignificant = (d.adj_pval != null) && (d.adj_pval < CUTOFF_ADJ_P) && (Math.abs(d.diff) > CUTOFF_LOG2FC);
+    if (!isSignificant) return COLOR_OTHER;
+
+    if (d.diff > 0) return COLOR_UP; // significant up
+    if (d.diff < 0) return COLOR_DOWN; // significant down
+    return COLOR_OTHER;
+  }
   
   function highlightOthers(pepKey, shouldHighlight) {
     const className = `.pep-key-${cssSafeKey(pepKey)}`;
@@ -20,10 +48,10 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
   
     container.selectAll(className)
       .attr('fill', function(d) {
-        return shouldHighlight ? '#cc00cc' : (d.pg_protein_accessions === highlightedProtein ? '#ffa500' : '#d9d9d9');
+        return shouldHighlight ? COLOR_SELECTED_PEPTIDE : getBaseFill(d);
       })
       .attr('r', shouldHighlight ? 4.5 : 3)
-      .attr('stroke', shouldHighlight ? '#cc00cc' : 'none')
+      .attr('stroke', shouldHighlight ? COLOR_SELECTED_PEPTIDE : 'none')
       .attr('stroke-width', shouldHighlight ? 1.5 : 0)
       .each(function() {
         if (shouldHighlight) {
@@ -79,7 +107,8 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
 
     const allData = sortedDataList.flatMap(exp => exp.data);
     const xExtent = d3.extent(allData, d => d.diff);
-    const yMax = d3.max(allData, d => -Math.log10(d.adj_pval));
+    const cutoffY = -Math.log10(CUTOFF_ADJ_P);
+    const yMax = Math.max(d3.max(allData, d => -Math.log10(d.adj_pval)) ?? 0, cutoffY);
     
     const plotsPerPage = 2;
     const start = showAll ? 0 : page * plotsPerPage;
@@ -100,7 +129,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
 
     visibleData.forEach(exp => {
       const data = exp.data;
-      const key = exp.experimentID;
+      const title = exp?.dose ?? exp.experimentID;
 
       const wrapper = container.append("div")
         .attr("class", "plot-wrapper");
@@ -121,6 +150,34 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
       const x = d3.scaleLinear().domain(xExtent).range([0, width]);
       const y = d3.scaleLinear().domain([-0.5, yMax]).range([height, 0]);
 
+      // Cutoff guide lines
+      g.append('line')
+        .attr('x1', x(-CUTOFF_LOG2FC))
+        .attr('x2', x(-CUTOFF_LOG2FC))
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', COLOR_CUTOFF_LINE)
+        .attr('stroke-dasharray', '4,3')
+        .attr('stroke-width', 1);
+
+      g.append('line')
+        .attr('x1', x(CUTOFF_LOG2FC))
+        .attr('x2', x(CUTOFF_LOG2FC))
+        .attr('y1', 0)
+        .attr('y2', height)
+        .attr('stroke', COLOR_CUTOFF_LINE)
+        .attr('stroke-dasharray', '4,3')
+        .attr('stroke-width', 1);
+
+      g.append('line')
+        .attr('x1', 0)
+        .attr('x2', width)
+        .attr('y1', y(cutoffY))
+        .attr('y2', y(cutoffY))
+        .attr('stroke', COLOR_CUTOFF_LINE)
+        .attr('stroke-dasharray', '4,3')
+        .attr('stroke-width', 1);
+
 
       const tooltip = g.append("g")
           .style("display", "none");
@@ -136,8 +193,8 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           .attr("y", 35)
 
       const tooltipBackground = tooltip.insert("rect", "text")
-          .attr("fill", "white")
-          .attr("stroke", "black")
+		  .attr("fill", COLOR_TOOLTIP_BG)
+		  .attr("stroke", COLOR_TOOLTIP_BORDER)
           .attr("stroke-width", "0.5px")
           .attr("x", -5)
           .attr("y", -5)
@@ -173,7 +230,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         .attr("cy", d => y(-Math.log10(d.adj_pval)))
         .attr("r", 3)
         .attr("class", d => `pep-key-${d.pep_grouping_key.replace(/\s+/g, '-')}`)
-        .style("fill", d => d.pg_protein_accessions === highlightedProtein ? "#ffa500" : "#d9d9d9")
+        .style("fill", d => getBaseFill(d))
         .each(function(d) {
           if (d.pg_protein_accessions === highlightedProtein) {
             d3.select(this).raise(); 
@@ -183,32 +240,34 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         
           tooltipBackground.attr("width", 0).attr("height", 0);
           d3.select(this)
-            .attr("fill", "#cc00cc")
+			.attr("fill", COLOR_SELECTED_PEPTIDE)
             .attr("r", 4.5)
-            .attr("stroke", "#cc00cc")
+			.attr("stroke", COLOR_SELECTED_PEPTIDE)
             .attr("stroke-width", 1.5);
         
           highlightOthers(d.pep_grouping_key, true);
         
           const tooltip = d3.select("#html-tooltip");
           tooltip
-            .style("display", "block")
+            .style("visibility", "visible")
+            .style("opacity", 1)
             .html(`
               <strong>Pep Key:</strong> ${d.pep_grouping_key}<br/>
               <strong>Protein:</strong> ${d.pg_protein_accessions}
             `)
-            .style("left", `${event.pageX + 10}px`)
-            .style("top", `${event.pageY - 40}px`);
+            ;
         })
         
         .on("mouseout", function (event, d) {
           d3.select(this)
-            .attr("fill", d.pg_protein_accessions === highlightedProtein ? "#ffa500" : "#d9d9d9")
+            .attr("fill", getBaseFill(d))
             .attr("r", 3)
             .attr("stroke", "none");
 
           highlightOthers(d.pep_grouping_key, false);
-          d3.select("#html-tooltip").style("display", "none");
+          d3.select("#html-tooltip")
+            .style("opacity", 0)
+            .style("visibility", "hidden");
 
         });
 
@@ -218,9 +277,9 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         .attr("text-anchor", "middle")
         .attr("font-size", "17px")
         .attr("font-family", "Raleway, Arial, sans-serif")
-        .text(key);
+        .text(title);
     });
-  }, [differentialAbundanceDataList, highlightedProtein, page]);
+  }, [differentialAbundanceDataList, highlightedProtein, page, showAll]);
 
   const totalPages = Math.ceil((differentialAbundanceDataList?.length || 0) / 2);
 
@@ -233,7 +292,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           <div className="volcano-plot-legend-item">
             <div
               style={{
-                backgroundColor: '#ffa500',
+				backgroundColor: COLOR_HIGHLIGHTED_PROTEIN,
                 border: '1.5px solid black',
                 borderRadius: '50%',
                 width: 18,
@@ -244,12 +303,20 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           </div>
         )}
         <div className="volcano-plot-legend-item">
-          <div style={{ backgroundColor: '#cc00cc', borderRadius: '50%', width: 18, height: 18 }} />
-          <span>Selected Peptide</span>
+          <div style={{ backgroundColor: COLOR_UP, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Up (adj.p &lt; {CUTOFF_ADJ_P}, log2FC &gt; {CUTOFF_LOG2FC})</span>
         </div>
         <div className="volcano-plot-legend-item">
-          <div style={{ backgroundColor: '#d9d9d9', borderRadius: '50%', width: 18, height: 18 }} />
-          <span>Other Peptides</span>
+          <div style={{ backgroundColor: COLOR_DOWN, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Down (adj.p &lt; {CUTOFF_ADJ_P}, log2FC &lt; -{CUTOFF_LOG2FC})</span>
+        </div>
+        <div className="volcano-plot-legend-item">
+          <div style={{ backgroundColor: COLOR_OTHER, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Not significant</span>
+        </div>
+        <div className="volcano-plot-legend-item">
+          <div style={{ backgroundColor: COLOR_SELECTED_PEPTIDE, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Selected Peptide</span>
         </div>
   
 
