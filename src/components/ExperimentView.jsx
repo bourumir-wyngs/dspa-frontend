@@ -4,9 +4,12 @@ import config from '../config.json';
 import VolcanoPlot from '../visualization/volcanoplot.js';
 import GOEnrichmentVisualization  from '../visualization/GOEnrichmentVisualization.js';
 
-const getTop20Proteins = (proteinScores) => {
-    const sortedData = proteinScores.sort((a, b) => b.cumulativeScore - a.cumulativeScore);
-    return sortedData.slice(0, 20);
+const getUniprotLink = (accession) => {
+    if (!accession) {
+        return null;
+    }
+
+    return `https://www.uniprot.org/uniprotkb/${accession}/entry`;
 };
 
 
@@ -14,7 +17,6 @@ const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
     const [experimentData, setExperimentData] = useState([]);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
-    const [topProteins, setTopProteins] = useState([]);
     const [goEnrichmentData, setGoEnrichmentData] = useState([]);
     const [qcPdfData, setQcPdfData] = useState(null);
 
@@ -78,12 +80,7 @@ const ExperimentInfo = () => {
         fetchExperimentData();
     }, [fetchExperimentData]);
 
-    useEffect(() => {
-        if (experimentData && experimentData.proteinScores) {
-            const top20 = getTop20Proteins(experimentData.proteinScores);
-            setTopProteins(top20);
-        }
-    }, [experimentData]);
+    const topChangingPeptides = experimentData?.topChangingPeptides || [];
 
     return (
         <div>
@@ -164,21 +161,31 @@ const ExperimentInfo = () => {
                     </div>
                     </div>
                 <div className="protein-view-section">
-                <h2 className="centered-heading" >Top 20 Proteins by Cumulative LiP Score</h2><br />
+                <h2 className="centered-heading" >Top 20 Changing Peptides</h2><br />
                 <table className="condition-protein-table">
                     <thead>
                         <tr>
                             <th className= "condition-protein-table">Protein Accession</th>
-                            <th className= "condition-protein-table">Cumulative LiP Score</th>
-                            <th className= "condition-protein-table" >Description</th>
+                            <th className= "condition-protein-table">Peptide Key</th>
+                            <th className= "condition-protein-table" >Diff</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {topProteins.map((protein, index) => (
+                        {topChangingPeptides.map((peptide, index) => (
                             <tr key={index}  className="protein-row">
-                                <td>{protein.pg_protein_accessions}</td>
-                                <td>{protein.total_cumulative_score.toFixed(2)}</td>
-                                <td>{protein.protein_description || 'N/A'}</td>
+                                <td>
+                                    {peptide.pg_protein_accessions ? (
+                                        <a
+                                            href={getUniprotLink(peptide.pg_protein_accessions)}
+                                            target="_blank"
+                                            rel="noreferrer"
+                                        >
+                                            {peptide.pg_protein_accessions}
+                                        </a>
+                                    ) : 'N/A'}
+                                </td>
+                                <td>{peptide.peptide_key || 'N/A'}</td>
+                                <td>{typeof peptide.diff === 'number' ? peptide.diff.toFixed(2) : 'N/A'}</td>
                             </tr>
                         ))}
                     </tbody>
