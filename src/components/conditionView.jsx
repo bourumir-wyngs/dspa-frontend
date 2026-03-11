@@ -8,6 +8,26 @@ import VolcanoPlot from '../visualization/volcanoplot.js';
 import DoseResponseCurves from '../visualization/DoseResponse.js';
 import { ProteinScoresTable } from '../visualization/ProteinScoresTable.js';
 
+const getConditionOptionLabel = (conditionOption) => {
+    if (!conditionOption) {
+        return '';
+    }
+
+    if (typeof conditionOption === 'string') {
+        return conditionOption;
+    }
+
+    return conditionOption.label || conditionOption.condition || conditionOption.value || '';
+};
+
+const getConditionOptionValue = (conditionOption) => {
+    if (!conditionOption) {
+        return '';
+    }
+
+    return typeof conditionOption === 'string' ? conditionOption : conditionOption.value;
+};
+
 export async function getPdbIds(uniprotAccession) {
     const url = `https://rest.uniprot.org/uniprotkb/${uniprotAccession}.json`;
 
@@ -77,6 +97,11 @@ const Condition = () => {
     const [activeTab, setActiveTab] = useState(TABS.VOLCANO_PLOT);
 
     const navigate = useNavigate();
+
+    const selectedConditionLabel = useMemo(() => {
+        const matchingCondition = conditions.find(conditionOption => getConditionOptionValue(conditionOption) === selectedCondition);
+        return getConditionOptionLabel(matchingCondition) || selectedCondition;
+    }, [conditions, selectedCondition]);
 
     const handleConditionChange = (event) => {
         const selected = event.target.value;
@@ -258,11 +283,18 @@ const Condition = () => {
             <div className="condition-section condition-dropdown">
                 <label htmlFor="conditionSelect">Select condition: </label>
                 <select id="conditionSelect" value={selectedCondition} onChange={handleConditionChange}>
-                    {conditions.map(c => <option key={c} value={c}>{c}</option>)}
+                    {conditions.map((conditionOption, index) => (
+                        <option
+                            key={getConditionOptionValue(conditionOption) || index}
+                            value={getConditionOptionValue(conditionOption)}
+                        >
+                            {getConditionOptionLabel(conditionOption)}
+                        </option>
+                    ))}
                 </select>
             </div>
 
-            {loading ? <p>Loading...</p> : error ? <p>Error: {error}</p> : <h1>Condition - {selectedCondition}</h1>}
+            {loading ? <p>Loading...</p> : error ? <p>Error: {error}</p> : <h1>Condition - {selectedConditionLabel}</h1>}
 
             <div className="tab-navigation">
                 {Object.values(TABS).map(tab => (

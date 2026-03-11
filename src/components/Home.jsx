@@ -5,6 +5,26 @@ import { useLocation, useNavigate } from "react-router-dom";
 import ProteinSearchResults from './ProteinSearchResults.jsx';
 import proteinDynamics from "../protein_dynamics.gif";
 
+const getConditionOptionLabel = (conditionOption) => {
+  if (!conditionOption) {
+    return "";
+  }
+
+  if (typeof conditionOption === "string") {
+    return conditionOption;
+  }
+
+  return conditionOption.label || conditionOption.condition || conditionOption.value || "";
+};
+
+const getConditionOptionValue = (conditionOption) => {
+  if (!conditionOption) {
+    return "";
+  }
+
+  return typeof conditionOption === "string" ? conditionOption : conditionOption.value;
+};
+
 function Home() {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
@@ -154,7 +174,9 @@ function Home() {
               >
                 <option value="">Select a Condition</option>
                 {conditions.map((condition, index) => (
-                  <option key={index} value={condition}>{condition}</option>
+                  <option key={getConditionOptionValue(condition) || index} value={getConditionOptionValue(condition)}>
+                    {getConditionOptionLabel(condition)}
+                  </option>
                 ))}
               </select>
               <span
