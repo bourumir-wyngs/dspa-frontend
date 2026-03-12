@@ -367,7 +367,7 @@ const NightingaleComponent = ({
                         const metaData = experimentMetaDataMap.get(key); 
                         return {
                             yValue: key,
-                            xValue: value.index,
+                            xValue: value.index + 1,  // 1-based to match Nightingale sequence positions
                             score: value.score === null ? 0 : value.score,
                             condition: metaData ? metaData.condition : "N/A", 
                         };
@@ -517,38 +517,40 @@ const NightingaleComponent = ({
                 </div>
                 <table style={{ width: '100%', tableLayout: 'fixed' }}>
                     <tbody>
-                        <tr >
-                            <td style={{ width: '150px' }}></td>
-                            <td style={{ width: '100%', overflow: 'hidden' }}>
-                                <style>{`nightingale-navigation .start-label, .end-label { visibility: hidden; }`}</style>
-                                <nightingale-navigation ref={navigationRef}/>
+                    <tr >
+                        <td style={{ width: '150px' }}></td>
+                        <td style={{ width: '100%', overflow: 'visible' }}>
+                            <style>{`nightingale-navigation .start-label, .end-label { visibility: hidden; }`}</style>
+                            <nightingale-navigation ref={navigationRef}/>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td >Sequence</td>
+                        <td style={{ width: '100%', overflow: 'visible' }}><nightingale-sequence ref={sequenceRef} style={{ display: 'block', width: '100%' }} /></td>
+                    </tr>
+
+                    {showHeatmap && (
+                        <tr>
+                            <td >Structural-Barcode</td>
+                            <td style={{ width: '100%', overflow: 'visible' }}>
+                                <nightingale-sequence-heatmap
+                                    ref={scoreBarcodeContainer}
+                                    id="id-for-nightingale-sequence-heatmap"
+                                    heatmap-id="seq-heatmap"
+                                    min-width="1200"
+                                    length={sequenceLength}
+                                    height="100"
+                                    display-start="1"
+                                    display-end={sequenceLength}
+                                    highlight-event="onmouseover"
+                                    margin-left="0"
+                                    margin-color="white"
+                                    style={{ display: 'block', width: '100%' }}
+                                />
                             </td>
                         </tr>
-
-                        <tr>
-                            <td >Sequence</td>
-                            <td style={{ width: '100%', overflow: 'hidden' }}><nightingale-sequence ref={sequenceRef} style={{ display: 'block', width: '100%' }} /></td>
-                        </tr>
-
-                           {showHeatmap && (
-                            <tr>
-                                <td >Structural-Barcode</td>
-                                <td style={{ width: '100%', overflow: 'hidden' }}>
-                                    <nightingale-sequence-heatmap
-                                        ref={scoreBarcodeContainer}
-                                        id="id-for-nightingale-sequence-heatmap"
-                                        heatmap-id="seq-heatmap"
-                                        min-width="1200"
-                                        length={sequenceLength}
-                                        height="100"
-                                        display-start="1"
-                                        display-end={sequenceLength}
-                                        highlight-event="onmouseover"
-                                        style={{ display: 'block', width: '100%' }}
-                                    />
-                                </td>
-                            </tr>
-                        )}
+                    )}
 
                         {hasDomainData && (
                             <tr >
