@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import "@nightingale-elements/nightingale-sequence";
 import "@nightingale-elements/nightingale-navigation";
 import "@nightingale-elements/nightingale-manager";
@@ -45,6 +45,51 @@ const defaultAttributes = {
     "highlight-color": "rgb(255, 210, 128)"
 };
 
+const getHeatmapTooltip = (d) => {
+    if (d.score === 0 || isNaN(d.score)) {
+        return `
+            <div class="tooltip-container">
+               <strong>no coverage</strong>
+            </div>
+            `;
+    }
+
+    return `
+        <div class="tooltip-container">
+            Experiment: <a href="/experiment/${d.yValue}" target="_blank" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
+            Condition: <strong class="tooltip-highlight">${d.condition || "N/A"}</strong><br />
+            LiP Score: <strong>${d.score.toFixed(2)}</strong>
+        </div>`;
+};
+
+const buildHeatmapRows = (differentialAbundanceData, experimentMetaData = []) => {
+    const experimentMetaDataMap = new Map();
+    experimentMetaData.forEach((meta) => {
+        experimentMetaDataMap.set(meta.dpx_comparison, meta);
+    });
+
+    return Object.entries(differentialAbundanceData).map(([key, values]) => {
+        const metaData = experimentMetaDataMap.get(key);
+
+        return {
+            yValue: key,
+            condition: metaData ? metaData.condition : "N/A",
+            cells: values.map(value => ({
+                yValue: key,
+                xValue: value.index + 1,
+                score: value.score === null ? 0 : value.score,
+                condition: metaData ? metaData.condition : "N/A",
+            })),
+        };
+    });
+};
+
+const createHeatmapDataset = (rows, sequenceLength) => ({
+    xDomain: Array.from({ length: sequenceLength }, (_, index) => index + 1),
+    yDomain: rows.map(({ yValue }) => yValue),
+    dataHeatmap: rows.flatMap(({ cells }) => cells),
+});
+
 const NightingaleComponent = ({
     proteinData, 
     pdbIds, 
@@ -52,7 +97,8 @@ const NightingaleComponent = ({
     setSelectedPdbId, 
     showHeatmap = true,
     passedExperimentIDs,
-    containerRef
+    containerRef,
+    masterCondition
 }) => {
     
     const sequenceRef = useRef(null);
@@ -73,10 +119,11 @@ const NightingaleComponent = ({
     const residuelevelContainer = useRef(null);
     const multipleExperimentsContainer = useRef(null);
     const scoreBarcodeContainer = useRef(null);
+    const matchingScoreBarcodeContainer = useRef(null);
+    const otherScoreBarcodeContainer = useRef(null);
     
     const [selectedButton, setSelectedButton] = useState(null);
     const [selectedExperiment, setSelectedExperiment] = useState('');
-    const [isHeatmapReady, setHeatmapReady] = useState(false);
     const experimentIDsList = passedExperimentIDs?.length > 0 
     ? passedExperimentIDs 
     : proteinData.experimentIDsList.length > 0
@@ -92,6 +139,33 @@ const NightingaleComponent = ({
     const [lipscoreString, setLipscoreString] = useState(defaultLipScoreString);
 
     const proteinName = proteinData.proteinName;
+    const shouldSplitHeatmap = Boolean(masterCondition);
+    const heatmapRows = useMemo(() => buildHeatmapRows(
+        proteinData.differentialAbundanceData,
+        proteinData.experimentMetaData
+    ), [proteinData.differentialAbundanceData, proteinData.experimentMetaData]);
+    const matchingHeatmapRows = useMemo(() => (
+        shouldSplitHeatmap
+            ? heatmapRows.filter(({ condition }) => condition === masterCondition)
+            : []
+    ), [heatmapRows, masterCondition, shouldSplitHeatmap]);
+    const otherHeatmapRows = useMemo(() => (
+        shouldSplitHeatmap
+            ? heatmapRows.filter(({ condition }) => condition !== masterCondition)
+            : []
+    ), [heatmapRows, masterCondition, shouldSplitHeatmap]);
+    const defaultHeatmapDataset = useMemo(
+        () => createHeatmapDataset(heatmapRows, sequenceLength),
+        [heatmapRows, sequenceLength]
+    );
+    const matchingHeatmapDataset = useMemo(
+        () => createHeatmapDataset(matchingHeatmapRows, sequenceLength),
+        [matchingHeatmapRows, sequenceLength]
+    );
+    const otherHeatmapDataset = useMemo(
+        () => createHeatmapDataset(otherHeatmapRows, sequenceLength),
+        [otherHeatmapRows, sequenceLength]
+    );
  
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
     const hasRegionData = proteinData.featuresData.features.some(({ type }) => type === "REGION");
@@ -355,50 +429,48 @@ const NightingaleComponent = ({
 
     useEffect(() => {
         customElements.whenDefined("nightingale-sequence-heatmap").then(() => {
-            if (scoreBarcodeContainer.current && checkDimensions(scoreBarcodeContainer.current)) {
+            const heatmapConfigurations = shouldSplitHeatmap
+                ? [
+                    {
+                        ref: matchingScoreBarcodeContainer,
+                        dataset: matchingHeatmapDataset,
+                    },
+                    {
+                        ref: otherScoreBarcodeContainer,
+                        dataset: otherHeatmapDataset,
+                    },
+                ]
+                : [
+                    {
+                        ref: scoreBarcodeContainer,
+                        dataset: defaultHeatmapDataset,
+                    },
+                ];
 
-                const experimentMetaDataMap = new Map();
-                proteinData.experimentMetaData.forEach((meta) => {
-                    experimentMetaDataMap.set(meta.dpx_comparison, meta);
-                });
+            heatmapConfigurations.forEach(({ ref, dataset }) => {
+                if (
+                    ref.current &&
+                    dataset.yDomain.length > 0 &&
+                    checkDimensions(ref.current) &&
+                    ref.current.setHeatmapData
+                ) {
+                    ref.current.setHeatmapData(dataset.xDomain, dataset.yDomain, dataset.dataHeatmap);
 
-                const dataHeatmap = Object.entries(proteinData.differentialAbundanceData).flatMap(([key, values]) =>
-                    values.map(value => {
-                        const metaData = experimentMetaDataMap.get(key); 
-                        return {
-                            yValue: key,
-                            xValue: value.index + 1,  // 1-based to match Nightingale sequence positions
-                            score: value.score === null ? 0 : value.score,
-                            condition: metaData ? metaData.condition : "N/A", 
-                        };
-                    })
-                );
-
-                const xValues = dataHeatmap.map(item => item.xValue);
-                const smallestXValue = Math.min(...xValues);
-                const largestXValue = Math.max(...xValues);
-
-                const xDomain = Array.from({ length: largestXValue - smallestXValue + 1 }, (_, i) => i + smallestXValue);
-                const yDomain = Object.keys(proteinData.differentialAbundanceData);
-
-                const heatmapElement = document.getElementById("id-for-nightingale-sequence-heatmap");
-                if (heatmapElement && heatmapElement.setHeatmapData) {
-                    heatmapElement.setHeatmapData(xDomain, yDomain, dataHeatmap);
-
-                    // Wait for heatmapInstance to be created, then apply the shared color scale
-                    const applyColor = () => {
-                        if (heatmapElement.heatmapInstance) {
-                            heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
+                    requestAnimationFrame(() => {
+                        if (ref.current?.heatmapInstance) {
+                            ref.current.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
+                            ref.current.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
                         }
-                    };
-                    // heatmapInstance is created in updated() after requestUpdate, so defer
-                    requestAnimationFrame(applyColor);
-
-                    setHeatmapReady(true);
+                    });
                 }
-            }
+            });
         });
-    }, [proteinData.differentialAbundanceData, proteinData.experimentMetaData, sequenceLength]);
+    }, [
+        shouldSplitHeatmap,
+        defaultHeatmapDataset,
+        matchingHeatmapDataset,
+        otherHeatmapDataset,
+    ]);
 
     // Toggle tick visibility: hide ticks when sequence letters are visible, show when hidden
     useEffect(() => {
@@ -433,28 +505,13 @@ const NightingaleComponent = ({
         return () => observer.disconnect();
     }, [mappedFeatures]);
 
-
-    if (isHeatmapReady) {
-        const heatmapElement = document.getElementById("id-for-nightingale-sequence-heatmap");
-        heatmapElement.heatmapInstance.setTooltip((d, x, y, xIndex, yIndex) => {
-            if (d.score === 0 || isNaN(d.score)) {
-                return `
-                    <div class="tooltip-container">
-                       <strong>no coverage</strong>
-                    </div>
-                    `;
-            } else
-                return `
-                <div class="tooltip-container">
-                    Experiment: <a href="/experiment/${d.yValue}" target="_blank" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
-                    Condition: <strong class="tooltip-highlight">${d.condition || "N/A"}</strong><br />
-                    LiP Score: <strong>${d.score.toFixed(2)}</strong>
-                </div>`;
-        });
-    }
-
     // Legend derived from the shared LIP_COLOR_SCALE (reversed so lowest scores appear first)
     const legendData = [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }));
+    const wrappedHeatmapLabelStyle = {
+        whiteSpace: 'normal',
+        overflowWrap: 'anywhere',
+        wordBreak: 'break-word',
+    };
 
     return (
         <div  id="nightingale-manager-container">
@@ -530,13 +587,69 @@ const NightingaleComponent = ({
                         <td style={{ width: '100%', overflow: 'visible' }}><nightingale-sequence ref={sequenceRef} style={{ display: 'block', width: '100%' }} /></td>
                     </tr>
 
-                    {showHeatmap && (
+                    {showHeatmap && shouldSplitHeatmap && (
+                        <>
+                            <tr>
+                                <td style={wrappedHeatmapLabelStyle}>
+                                    Structural-Barcode
+                                    <br />
+                                    ({masterCondition})
+                                </td>
+                                <td style={{ width: '100%', overflow: 'visible' }}>
+                                    {matchingHeatmapRows.length > 0 ? (
+                                        <nightingale-sequence-heatmap
+                                            ref={matchingScoreBarcodeContainer}
+                                            heatmap-id="seq-heatmap-matching"
+                                            min-width="1200"
+                                            length={sequenceLength}
+                                            height="100"
+                                            display-start="1"
+                                            display-end={sequenceLength}
+                                            highlight-event="onmouseover"
+                                            margin-left="0"
+                                            margin-color="white"
+                                            style={{ display: 'block', width: '100%' }}
+                                        />
+                                    ) : (
+                                        <div>No experiment rows match this condition.</div>
+                                    )}
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style={wrappedHeatmapLabelStyle}>
+                                    Structural-Barcode
+                                    <br />
+                                    (other conditions)
+                                </td>
+                                <td style={{ width: '100%', overflow: 'visible' }}>
+                                    {otherHeatmapRows.length > 0 ? (
+                                        <nightingale-sequence-heatmap
+                                            ref={otherScoreBarcodeContainer}
+                                            heatmap-id="seq-heatmap-other"
+                                            min-width="1200"
+                                            length={sequenceLength}
+                                            height="100"
+                                            display-start="1"
+                                            display-end={sequenceLength}
+                                            highlight-event="onmouseover"
+                                            margin-left="0"
+                                            margin-color="white"
+                                            style={{ display: 'block', width: '100%' }}
+                                        />
+                                    ) : (
+                                        <div>No experiment rows from other conditions.</div>
+                                    )}
+                                </td>
+                            </tr>
+                        </>
+                    )}
+
+                    {showHeatmap && !shouldSplitHeatmap && (
                         <tr>
                             <td >Structural-Barcode</td>
                             <td style={{ width: '100%', overflow: 'visible' }}>
                                 <nightingale-sequence-heatmap
                                     ref={scoreBarcodeContainer}
-                                    id="id-for-nightingale-sequence-heatmap"
                                     heatmap-id="seq-heatmap"
                                     min-width="1200"
                                     length={sequenceLength}

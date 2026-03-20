@@ -353,6 +353,7 @@ const Condition = () => {
                             showHeatmap={true}
                             passedExperimentIDs={experimentIDs}
                             containerRef={containerRef}
+                            masterCondition={selectedConditionLabel}
                         />
                     )}
                 </div>
