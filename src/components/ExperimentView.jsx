@@ -162,6 +162,7 @@ const ExperimentInfo = () => {
                 <table className="condition-protein-table">
                     <thead>
                         <tr>
+                            <th className= "condition-protein-table">Comparison</th>
                             <th className= "condition-protein-table">Protein Accession</th>
                             <th className= "condition-protein-table">Peptide Key</th>
                             <th className= "condition-protein-table" >Diff</th>
@@ -170,6 +171,7 @@ const ExperimentInfo = () => {
                     <tbody>
                         {topChangingPeptides.map((peptide, index) => (
                             <tr key={index}  className="protein-row">
+                                <td>{peptide.comparison || 'N/A'}</td>
                                 <td>
                                     {peptide.pg_protein_accessions ? (
                                         <a
