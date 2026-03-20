@@ -120,9 +120,6 @@ const ExperimentInfo = () => {
                                 <strong>Experiment:</strong> {experimentData.metaData.experiment || 'N/A'}
                             </div>
                             <div className="metadata-field">
-                                <strong>Approach:</strong> {experimentData.metaData.approach || 'N/A'}
-                            </div>
-                            <div className="metadata-field">
                                 <strong>Digestion Protocol:</strong> {experimentData.metaData.digestion_protocol || 'N/A'}
                             </div>
                             <div className="metadata-field">
