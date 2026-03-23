@@ -105,8 +105,6 @@ const NightingaleComponent = ({
     const regionRef = useRef(null);
     const structureRef = useRef(null);
 
-    const [refreshStructureKey, setRefreshStructureKey] = useState(0);
-
     const [mappedFeatures, setMappedFeatures] = useState([]);
 
     const residuelevelContainer = useRef(null);
@@ -121,6 +119,19 @@ const NightingaleComponent = ({
     : proteinData.experimentIDsList.length > 0
         ? proteinData.experimentIDsList
         : proteinData.lipscoreList.map(entry => entry.experimentID);
+
+    const experimentIDToMeta = useMemo(() => {
+        const mapping = {};
+        if (proteinData.experimentMetaData) {
+            proteinData.experimentMetaData.forEach(meta => {
+                mapping[meta.dpx_comparison] = {
+                    condition: meta.condition,
+                    dose: meta.dose
+                };
+            });
+        }
+        return mapping;
+    }, [proteinData.experimentMetaData]);
 
     const [trackHeight, setTrackHeight] = useState(null);
     const lastLayoutHeightsRef = useRef({ structureHeight: null, trackHeight: null });
@@ -254,10 +265,6 @@ const NightingaleComponent = ({
         }
 
         setLipscoreString(lipScoreString);
-
-        if(structureRef.current){
-            setRefreshStructureKey(refreshStructureKey => refreshStructureKey + 1);
-        } 
     };
 
     useEffect(() => {
@@ -536,24 +543,37 @@ const NightingaleComponent = ({
                             onChange={(event) => handleExperimentClick(event.target.value)}
                         >
                             <option value="">None</option>
-                            {experimentIDsList.map((experimentID) => (
-                                <option key={experimentID} value={experimentID}>
-                                    {`Experiment ${experimentID}`}
-                                </option>
-                            ))}
+                            {experimentIDsList.map((experimentID) => {
+                                const meta = experimentIDToMeta[experimentID];
+                                const label = meta
+                                    ? (meta.dose || `Experiment ${experimentID}`)
+                                    : `Experiment ${experimentID}`;
+                                return (
+                                    <option key={experimentID} value={experimentID} title={`Experiment ${experimentID}`}>
+                                        {label}
+                                    </option>
+                                );
+                            })}
                         </select>
                     </div>
                 ) : (
                     <div className="experiment-buttons">
-                        {experimentIDsList.map((experimentID, index) => (
-                            <button
-                                key={experimentID}
-                                className={`experiment-button ${selectedExperiment === experimentID ? "selected" : ""}`}
-                                onClick={() => handleExperimentClick(experimentID, index)}
-                            >
-                                {`Experiment ${experimentID}`}
-                            </button>
-                        ))}
+                        {experimentIDsList.map((experimentID, index) => {
+                            const meta = experimentIDToMeta[experimentID];
+                            const label = meta
+                                ? (meta.dose || `Experiment ${experimentID}`)
+                                : `Experiment ${experimentID}`;
+                            return (
+                                <button
+                                    key={experimentID}
+                                    className={`experiment-button ${selectedExperiment === experimentID ? "selected" : ""}`}
+                                    onClick={() => handleExperimentClick(experimentID, index)}
+                                    title={`Experiment ${experimentID}`}
+                                >
+                                    {label}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
             </div>
@@ -562,7 +582,7 @@ const NightingaleComponent = ({
             <nightingale-manager>
                 <div id="tooltip" className="tooltip"></div>
                 <div style={{ width: '100%', overflow: 'hidden' }}>
-                    <nightingale-structure key={refreshStructureKey} ref={structureRef} style={{ display: 'block', width: '100%' }} />
+                    <nightingale-structure ref={structureRef} style={{ display: 'block', width: '100%' }} />
                 </div>
                 <table style={{ width: '100%', tableLayout: 'fixed' }}>
                     <tbody>
