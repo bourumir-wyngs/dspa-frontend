@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import config from '../config.json';
-import GOEnrichmentVisualization from '../visualization/GOEnrichmentVisualization.js';
 import NightingaleComponent from './NightingaleComponent.jsx';
 import "@nightingale-elements/nightingale-sequence";
 import VolcanoPlot from '../visualization/volcanoplot.js';
@@ -64,12 +63,10 @@ export async function getPdbIds(uniprotAccession) {
 }
 
 const TABS = {
-    VOLCANO_PLOT: 'Volcano Plot',
-    GENE_ONTOLOGY: 'Gene Ontology Enrichment Analysis'
+    VOLCANO_PLOT: 'Volcano Plot'
 };
 
 const Condition = () => {
-    const chartRefGO = useRef(null);
     const chartRefVolcano = useRef(null);
     const isMounted = useRef(true);
     const containerRef = useRef(null);
@@ -79,7 +76,6 @@ const Condition = () => {
     const [conditions, setConditions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
-    const [goEnrichmentData, setGoEnrichmentData] = useState([]);
     const[ doseResponseExperiments, setDoseResponseExperiments] = useState([]);
     const [experimentIDs, setExperimentIDs] = useState([]);
     const [error, setError] = useState('');
@@ -90,9 +86,7 @@ const Condition = () => {
     const [doseResponseDataPlotPoints, setDoseResponseDataPlotPoints] = useState([]);
     const [selectedExperiment, setSelectedExperiment] = useState("");
     const [allGoTerms, setAllGoTerms] = useState([]);
-    const [allProteinData, setAllProteinData] = useState([]);
     const [filteredExperimentData, setFilteredExperimentData] = useState([]);
-    const [selectedGoTerm, setSelectedGoTerm] = useState(null);
     const [displayedProteinData, setDisplayedProteinData] = useState(null);
     const [activeTab, setActiveTab] = useState(TABS.VOLCANO_PLOT);
 
@@ -113,23 +107,6 @@ const Condition = () => {
         setDisplayedProtein(proteinAccession);
         setSelectedExperiment("");
     };
-
-    const handleGoTermSelect = (selectedTerm) => {
-        setSelectedGoTerm(selectedTerm);
-        if (selectedTerm === "") {
-            setFilteredExperimentData(allProteinData);
-        } else {
-            const termDetails = allGoTerms.find(term => term.go_term === selectedTerm);
-            if (termDetails) {
-                const accessionsArray = termDetails.accessions.map(a => a.trim());
-                const filteredData = allProteinData.filter(p => accessionsArray.includes(p.proteinAccession?.trim()));
-                setFilteredExperimentData(filteredData);
-            } else {
-                setFilteredExperimentData([]);
-            }
-        }
-    };
-
     const fetchData = async (url, signal) => {
         const response = await fetch(url, { signal });
         if (!response.ok) {
@@ -202,9 +179,7 @@ const Condition = () => {
                     const conditionData = rawData.conditionData;
                     setSelectedCondition(rawData.conditionData.condition);
                     setDifferentialAbundanceData(rawData.conditionData.differentialAbundanceDataList);
-                    setGoEnrichmentData(rawData.conditionData.goEnrichmentData);
                     setExperimentIDs(rawData.conditionData.experimentIDsList);
-                    setAllProteinData(rawData.conditionData.proteinScoresTable);
                     setFilteredExperimentData(rawData.conditionData.proteinScoresTable);
                     setAllGoTerms(rawData.conditionData.goTerms);
                     setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);   
@@ -309,7 +284,7 @@ const Condition = () => {
             </div>
 
            <div
-            className={`condition-section-wrapper ${ activeTab === TABS.VOLCANO_PLOT ? 'condition-volcano-plot-wrapper' : ''} ${activeTab === TABS.GENE_ONTOLOGY ? 'condition-go-enrichment-wrapper' : ''}`}
+            className={`condition-section-wrapper ${ activeTab === TABS.VOLCANO_PLOT ? 'condition-volcano-plot-wrapper' : ''}`}
             >
             {activeTab === TABS.VOLCANO_PLOT && (
                 <VolcanoPlot
@@ -318,25 +293,17 @@ const Condition = () => {
                 chartRef={chartRefVolcano}
                 />
             )}
-            {activeTab === TABS.GENE_ONTOLOGY && (
-                <GOEnrichmentVisualization
-                goEnrichmentData={goEnrichmentData}
-                onProteinSelect={setDisplayedProtein}
-                chartRef={chartRefGO}
-                />
-            )}
             </div>
 
 
             <div className="condition-section condition-protein-experiment-wrapper">
                 <div className="condition-table-container">
-                    <h2>Proteins in {selectedGoTerm || 'All GO Terms'}</h2>
+                    <h2>Top proteins</h2>
                     <ProteinScoresTable
                         experimentData={filteredExperimentData}
                         onProteinClick={handleProteinClick}
                         displayedProtein={displayedProtein}
                         goTerms={allGoTerms}
-                        onGoTermSelect={handleGoTermSelect}
                     />
                 </div>
 

@@ -1,23 +1,13 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import config from '../config.json';
 import VolcanoPlot from '../visualization/volcanoplot.js';
-import GOEnrichmentVisualization  from '../visualization/GOEnrichmentVisualization.js';
-
-const getUniprotLink = (accession) => {
-    if (!accession) {
-        return null;
-    }
-
-    return `https://www.uniprot.org/uniprotkb/${accession}/entry`;
-};
 
 
 const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
     const [experimentData, setExperimentData] = useState([]);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
-    const [goEnrichmentData, setGoEnrichmentData] = useState([]);
     const [qcPdfData, setQcPdfData] = useState(null);
 
     const fetchExperimentData = useCallback(async () => {
@@ -30,7 +20,6 @@ const ExperimentInfo = () => {
           const data = await response.json();
           setExperimentData(data.experimentData);
           setDifferentialAbundanceData(data.experimentData.differentialAbundanceDataList);
-          setGoEnrichmentData(data.experimentData.goEnrichmentData);
         } catch (error) {
           console.error("Error fetching data: ", error);
         }
@@ -148,15 +137,6 @@ const ExperimentInfo = () => {
                         />
                     </div>
                     </div>
-                
-                <div className="protein-view-section">
-                <h2  className="centered-heading" > Gene Ontology Enrichment Analysis</h2><br />
-                    <div>
-                        <GOEnrichmentVisualization
-                            goEnrichmentData={goEnrichmentData}
-                            />
-                    </div>
-                    </div>
                 <div className="protein-view-section">
                 <h2 className="centered-heading" >Top 20 Changing Peptides</h2><br />
                 <table className="condition-protein-table">
@@ -175,7 +155,7 @@ const ExperimentInfo = () => {
                                 <td>
                                     {peptide.pg_protein_accessions ? (
                                         <a
-                                            href={getUniprotLink(peptide.pg_protein_accessions)}
+                                            href={`/visualize/${peptide.pg_protein_accessions}`}
                                             target="_blank"
                                             rel="noreferrer"
                                         >

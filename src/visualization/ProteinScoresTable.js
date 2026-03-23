@@ -11,20 +11,6 @@ export const ProteinScoresTable = ({ experimentData, onProteinClick, displayedPr
 
     return (
         <div className="condition-table-container">
-            <div className="go-term-selector">
-                <label htmlFor="goTermSelect">Filter by GO Term: </label>
-                <select 
-                    id="goTermSelect" 
-                    onChange={(e) => onGoTermSelect(e.target.value)}
-                    defaultValue=""
-                    className="go-term-dropdown"
-                >
-                    <option value="">All</option>
-                    {goTerms && goTerms.map((term, index) => (
-                        <option key={index} value={term.go_term}>{term.go_term}</option>
-                    ))}
-                </select>
-            </div>
             <table className="condition-protein-table">
                 <thead>
                     <tr>
