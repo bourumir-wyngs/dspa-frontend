@@ -8,20 +8,13 @@ import "@nightingale-elements/nightingale-msa";
 
 import "@nightingale-elements/nightingale-sequence-heatmap";
 import "@dspa-nightingale/nightingale-structure";
+import { LIP_SCALE as LIP_COLOR_SCALE } from "@dspa-nightingale/nightingale-structure";
 import "@dspa-nightingale/nightingale-track";
 
 
 // Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
 // Each entry defines a threshold (score > threshold → use this color) checked top-down.
 // The last entry (threshold -Infinity) is the fallback for score ≤ 0 / no data.
-const LIP_COLOR_SCALE = [
-    { threshold: 7,          color: '#782162', rgb: [120, 33, 98],   label: '> 7' },
-    { threshold: 5,          color: '#da49a9', rgb: [218, 73, 169],  label: '5 - 7' },
-    { threshold: 4,          color: '#f2c0e1', rgb: [242, 192, 225], label: '4 - 5' },
-    { threshold: 3,          color: '#fbeaf5', rgb: [251, 234, 245], label: '3 - 4' },
-    { threshold: 0,          color: '#acc1db', rgb: [172, 193, 219], label: '0 - 3' },
-    { threshold: -Infinity,  color: '#000000', rgb: [0, 0, 0],       label: 'no LiP Score reported' },
-];
 
 /**
  * Returns the color string for a given LiP score, using the shared LIP_COLOR_SCALE.
@@ -122,7 +115,6 @@ const NightingaleComponent = ({
     const matchingScoreBarcodeContainer = useRef(null);
     const otherScoreBarcodeContainer = useRef(null);
     
-    const [selectedButton, setSelectedButton] = useState(null);
     const [selectedExperiment, setSelectedExperiment] = useState('');
     const experimentIDsList = passedExperimentIDs?.length > 0 
     ? passedExperimentIDs 
@@ -233,7 +225,7 @@ const NightingaleComponent = ({
             window.removeEventListener("resize", updateHeight);
             window.removeEventListener("touchstart", handleTouchStart);
         };
-    }, [visibleTracks.length]);
+    }, [visibleTracks.length, containerRef]);
      
     const checkDimensions = (element) => {
         if (element) {
@@ -244,11 +236,11 @@ const NightingaleComponent = ({
         return false;
     };
     
-    const getLipScoreDataByExperimentID = (experimentID) => {
+    const getLipScoreDataByExperimentID = React.useCallback((experimentID) => {
         if (!proteinData || !proteinData.lipscoreList) return null;
         const lipScoreEntry = proteinData.lipscoreList.find(entry => entry.experimentID === experimentID);
         return lipScoreEntry ? lipScoreEntry.data : null;
-    };
+    }, [proteinData]);
 
     const handleExperimentClick = (experimentID,index) => {
         let lipScoreString = JSON.stringify(Array(sequenceLength).fill(-1));
@@ -279,7 +271,7 @@ const NightingaleComponent = ({
         if (lipScoreArray) {
             setLipscoreString(JSON.stringify(lipScoreArray));
         }
-    }, [experimentIDsList, selectedExperiment]);
+    }, [experimentIDsList, selectedExperiment, getLipScoreDataByExperimentID]);
 
     useEffect(() => {
         if (proteinData?.featuresData?.features && trackHeight) {
