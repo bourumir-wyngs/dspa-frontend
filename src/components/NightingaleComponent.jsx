@@ -119,11 +119,27 @@ const NightingaleComponent = ({
     const otherScoreBarcodeContainer = useRef(null);
     
     const [selectedExperiment, setSelectedExperiment] = useState('');
-    const experimentIDsList = passedExperimentIDs?.length > 0 
-    ? passedExperimentIDs 
-    : proteinData.experimentIDsList.length > 0
-        ? proteinData.experimentIDsList
-        : proteinData.lipscoreList.map(entry => entry.experimentID);
+    const availableExperimentIds = useMemo(
+        () => proteinData.lipscoreList?.map(entry => entry.experimentID) || [],
+        [proteinData.lipscoreList]
+    );
+    const experimentIDsList = useMemo(() => {
+        if (passedExperimentIDs?.length > 0) {
+            const filteredExperimentIds = passedExperimentIDs.filter((experimentID) => (
+                availableExperimentIds.includes(experimentID)
+            ));
+
+            if (filteredExperimentIds.length > 0) {
+                return filteredExperimentIds;
+            }
+        }
+
+        if (proteinData.experimentIDsList.length > 0) {
+            return proteinData.experimentIDsList;
+        }
+
+        return availableExperimentIds;
+    }, [availableExperimentIds, passedExperimentIDs, proteinData.experimentIDsList]);
 
     const experimentIDToMeta = useMemo(() => {
         const mapping = {};
@@ -275,17 +291,26 @@ const NightingaleComponent = ({
     };
 
     useEffect(() => {
-        if (!experimentIDsList || experimentIDsList.length === 0) return;
-        if (selectedExperiment !== '') return;
-
-        const defaultExperimentId = experimentIDsList[0];
-        setSelectedExperiment(defaultExperimentId);
-
-        const lipScoreArray = getLipScoreDataByExperimentID(defaultExperimentId);
-        if (lipScoreArray) {
-            setLipscoreString(JSON.stringify(lipScoreArray));
+        if (!experimentIDsList || experimentIDsList.length === 0) {
+            setSelectedExperiment('');
+            setLipscoreString(defaultLipScoreString);
+            return;
         }
-    }, [experimentIDsList, selectedExperiment, getLipScoreDataByExperimentID]);
+
+        const nextExperimentId = experimentIDsList.includes(selectedExperiment)
+            ? selectedExperiment
+            : experimentIDsList[0];
+        const lipScoreArray = getLipScoreDataByExperimentID(nextExperimentId);
+
+        setSelectedExperiment(nextExperimentId);
+        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(-1)));
+    }, [
+        defaultLipScoreString,
+        experimentIDsList,
+        getLipScoreDataByExperimentID,
+        selectedExperiment,
+        sequenceLength,
+    ]);
 
     useEffect(() => {
         if (proteinData?.featuresData?.features && trackHeight) {
