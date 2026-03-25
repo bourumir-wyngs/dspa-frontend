@@ -93,13 +93,20 @@ const NightingaleComponent = ({
     containerRef,
     masterCondition
 }) => {
-    
+
+    const getDefaultTooltipContent = (feature) => (
+        feature.description || feature.type.replace(/_/g, ' ').toLowerCase()
+    );
+
     const sequenceRef = useRef(null);
     const navigationRef = useRef(null);
     const domainRef = useRef(null);
     const bindingRef = useRef(null);
+    const modifiedResidueRef = useRef(null);
     const disulfidRef = useRef(null);
     const betastrandRef = useRef(null);
+    const alphaHelixRef = useRef(null);
+    const coiledCoilRef = useRef(null);
     const siteRef = useRef(null);
     const structureRef = useRef(null);
 
@@ -171,15 +178,21 @@ const NightingaleComponent = ({
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
     const hasSiteData = proteinData.featuresData.features.some(({ type }) => type === "SITE");
     const hasBindingData = proteinData.featuresData.features.some(({ type }) => type === "BINDING");
+    const hasModifiedResidueData = proteinData.featuresData.features.some(({ type }) => type === "MOD_RES");
     const hasDisulfidData = proteinData.featuresData.features.some(({ type }) => type === "DISULFID");
     const hasBetaStrandData = proteinData.featuresData.features.some(({ type }) => type === "STRAND");
+    const hasAlphaHelixData = proteinData.featuresData.features.some(({ type }) => type === "HELIX");
+    const hasCoiledCoilData = proteinData.featuresData.features.some(({ type }) => type === "COILED");
 
     const visibleTracks = [
         hasDomainData && "domain",
         hasBindingData && "binding",
+        hasModifiedResidueData && "mod_res",
         hasSiteData && "site",
         hasDisulfidData && "disulfid",
+        hasAlphaHelixData && "helix",
         hasBetaStrandData && "strand",
+        hasCoiledCoilData && "coiled",
         showHeatmap && "heatmap"
     ].filter(Boolean);
 
@@ -320,7 +333,7 @@ const NightingaleComponent = ({
         };
 
         const updateTracks = () => {
-            const trackIds = ["domain", "site", "binding", "disulfid", "strand"];
+            const trackIds = ["domain", "site", "binding", "mod_res", "disulfid", "helix", "strand", "coiled"];
             trackIds.forEach(id => {
                 const trackElement = document.querySelector(`#${id}`);
                 if (trackElement) {
@@ -331,14 +344,14 @@ const NightingaleComponent = ({
                             if (feature.type.toUpperCase() === "BINDING" && feature.ligand && feature.ligand.name) {
                                 return { ...feature, tooltipContent: feature.ligand.name };
                             }
+                            if (!feature.tooltipContent) {
+                                return { ...feature, tooltipContent: getDefaultTooltipContent(feature) };
+                            }
                             return feature;
                         });
                     } else{
                         trackFeatures = trackFeatures.map(feature => {
-                            if (feature.description) {
-                                return { ...feature, tooltipContent: feature.description };
-                            }
-                            return feature;
+                            return { ...feature, tooltipContent: getDefaultTooltipContent(feature) };
                         });
 
                     }
@@ -363,8 +376,11 @@ const NightingaleComponent = ({
         updateElementAttributes(navigationRef, "navigation");
         updateElementAttributes(domainRef, "domain");
         updateElementAttributes(bindingRef, "binding");
+        updateElementAttributes(modifiedResidueRef, "mod_res");
         updateElementAttributes(disulfidRef, "disulfid");
+        updateElementAttributes(alphaHelixRef, "helix");
         updateElementAttributes(betastrandRef, "strand");
+        updateElementAttributes(coiledCoilRef, "coiled");
         updateElementAttributes(siteRef, "site");
 
         const attributes = {
@@ -682,16 +698,34 @@ const NightingaleComponent = ({
                                 <td><nightingale-track ref={bindingRef} /></td>
                             </tr>
                         )}
+                        {hasModifiedResidueData && (
+                            <tr>
+                                <td>Modified residue</td>
+                                <td><nightingale-track ref={modifiedResidueRef} /></td>
+                            </tr>
+                        )}
                         {hasDisulfidData && (
                             <tr>
                                 <td>Disulfide bond</td>
                                 <td><nightingale-track ref={disulfidRef} /></td>
                             </tr>
                         )}
+                        {hasAlphaHelixData && (
+                            <tr>
+                                <td>Alpha helix</td>
+                                <td><nightingale-track ref={alphaHelixRef} /></td>
+                            </tr>
+                        )}
                         {hasBetaStrandData && (
                             <tr>
                                 <td>Beta strand</td>
                                 <td ><nightingale-track ref={betastrandRef} /></td>
+                            </tr>
+                        )}
+                        {hasCoiledCoilData && (
+                            <tr>
+                                <td>Coiled-coil</td>
+                                <td><nightingale-track ref={coiledCoilRef} /></td>
                             </tr>
                         )}
 
