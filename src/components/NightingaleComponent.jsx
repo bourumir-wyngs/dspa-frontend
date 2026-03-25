@@ -98,11 +98,9 @@ const NightingaleComponent = ({
     const navigationRef = useRef(null);
     const domainRef = useRef(null);
     const bindingRef = useRef(null);
-    const chainRef = useRef(null);
     const disulfidRef = useRef(null);
     const betastrandRef = useRef(null);
     const siteRef = useRef(null);
-    const regionRef = useRef(null);
     const structureRef = useRef(null);
 
     const [mappedFeatures, setMappedFeatures] = useState([]);
@@ -171,10 +169,8 @@ const NightingaleComponent = ({
     );
  
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
-    const hasRegionData = proteinData.featuresData.features.some(({ type }) => type === "REGION");
     const hasSiteData = proteinData.featuresData.features.some(({ type }) => type === "SITE");
     const hasBindingData = proteinData.featuresData.features.some(({ type }) => type === "BINDING");
-    const hasChainData = proteinData.featuresData.features.some(({ type }) => type === "CHAIN");
     const hasDisulfidData = proteinData.featuresData.features.some(({ type }) => type === "DISULFID");
     const hasBetaStrandData = proteinData.featuresData.features.some(({ type }) => type === "STRAND");
 
@@ -182,10 +178,8 @@ const NightingaleComponent = ({
         hasDomainData && "domain",
         hasBindingData && "binding",
         hasSiteData && "site",
-        hasChainData && "chain",
         hasDisulfidData && "disulfid",
         hasBetaStrandData && "strand",
-        hasRegionData && "region",
         showHeatmap && "heatmap"
     ].filter(Boolean);
 
@@ -326,7 +320,7 @@ const NightingaleComponent = ({
         };
 
         const updateTracks = () => {
-            const trackIds = ["domain", "region", "site", "binding", "chain", "disulfid", "strand"];
+            const trackIds = ["domain", "site", "binding", "disulfid", "strand"];
             trackIds.forEach(id => {
                 const trackElement = document.querySelector(`#${id}`);
                 if (trackElement) {
@@ -369,11 +363,9 @@ const NightingaleComponent = ({
         updateElementAttributes(navigationRef, "navigation");
         updateElementAttributes(domainRef, "domain");
         updateElementAttributes(bindingRef, "binding");
-        updateElementAttributes(chainRef, "chain");
         updateElementAttributes(disulfidRef, "disulfid");
         updateElementAttributes(betastrandRef, "strand");
         updateElementAttributes(siteRef, "site");
-        updateElementAttributes(regionRef, "region");
 
         const attributes = {
             ...defaultAttributes,
@@ -690,13 +682,6 @@ const NightingaleComponent = ({
                                 <td><nightingale-track ref={bindingRef} /></td>
                             </tr>
                         )}
-
-                        {hasChainData && (
-                            <tr >
-                                <td>Chain</td>
-                                <td><nightingale-track ref={chainRef} /></td>
-                            </tr>
-                        )}
                         {hasDisulfidData && (
                             <tr>
                                 <td>Disulfide bond</td>
@@ -714,13 +699,6 @@ const NightingaleComponent = ({
                             <tr>
                                 <td>Site</td>
                                 <td><nightingale-track ref={siteRef} /></td>
-                            </tr>
-                        )}
-
-                        {hasRegionData && (
-                            <tr>
-                                <td>Region</td>
-                                <td><nightingale-track ref={regionRef} /></td>
                             </tr>
                         )}
 
