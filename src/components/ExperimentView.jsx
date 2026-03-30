@@ -3,6 +3,14 @@ import { useParams } from 'react-router-dom';
 import config from '../config.json';
 import VolcanoPlot from '../visualization/volcanoplot.js';
 
+const SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS = {
+    accession: 'Protein accession identifier from the UniProt proteome entries matched in DSPA.',
+    description: 'Protein description annotation associated with the matched accession.',
+    maxLog2FC: 'Largest absolute log2 fold change among significant differential_abundance rows for this protein across all comparisons in the experiment. The displayed value keeps the original sign of that strongest change.',
+    significantPeptides: 'Count of significant differential_abundance peptide rows for this protein across all comparisons, using adj. p-value < 0.05 and |log2FC| > 1.',
+    comparison: 'Comparison in which the displayed Max log2FC value was observed.'
+};
+
 
 const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
@@ -69,7 +77,7 @@ const ExperimentInfo = () => {
         fetchExperimentData();
     }, [fetchExperimentData]);
 
-    const topChangingPeptides = experimentData?.topChangingPeptides || [];
+    const significantProteins = experimentData?.significantProteins || experimentData?.proteinScores || [];
 
     return (
         <div>
@@ -138,33 +146,35 @@ const ExperimentInfo = () => {
                     </div>
                     </div>
                 <div className="protein-view-section">
-                <h2 className="centered-heading" >Top 20 Changing Peptides</h2><br />
+                <h2 className="centered-heading">Significant Proteins across Comparisons</h2><br />
                 <table className="condition-protein-table">
                     <thead>
                         <tr>
-                            <th className= "condition-protein-table">Comparison</th>
-                            <th className= "condition-protein-table">Protein Accession</th>
-                            <th className= "condition-protein-table">Peptide Key</th>
-                            <th className= "condition-protein-table" >Diff</th>
+                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.accession}>Accession</th>
+                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.description}>Description</th>
+                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.maxLog2FC}>Max log<sub>2</sub>FC</th>
+                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.significantPeptides}>Sig. peptides</th>
+                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.comparison}>Comparison</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {topChangingPeptides.map((peptide, index) => (
-                            <tr key={index}  className="protein-row">
-                                <td>{peptide.comparison || 'N/A'}</td>
+                        {significantProteins.map((protein, index) => (
+                            <tr key={`${protein.proteinAccession || protein.pg_protein_accessions}-${index}`} className="protein-row">
                                 <td>
-                                    {peptide.pg_protein_accessions ? (
+                                    {protein.proteinAccession || protein.pg_protein_accessions ? (
                                         <a
-                                            href={`/visualize/${peptide.pg_protein_accessions}`}
+                                            href={`/visualize/${protein.proteinAccession || protein.pg_protein_accessions}`}
                                             target="_blank"
                                             rel="noreferrer"
                                         >
-                                            {peptide.pg_protein_accessions}
+                                            {protein.proteinAccession || protein.pg_protein_accessions}
                                         </a>
                                     ) : 'N/A'}
                                 </td>
-                                <td>{peptide.peptide_key || 'N/A'}</td>
-                                <td>{typeof peptide.diff === 'number' ? peptide.diff.toFixed(2) : 'N/A'}</td>
+                                <td>{protein.protein_description || 'N/A'}</td>
+                                <td>{typeof protein.maxLog2FC === 'number' ? protein.maxLog2FC.toFixed(2) : 'N/A'}</td>
+                                <td>{protein.n_peptides ?? 'N/A'}</td>
+                                <td>{protein.comparison || protein.dpx_comparison || 'N/A'}</td>
                             </tr>
                         ))}
                     </tbody>
