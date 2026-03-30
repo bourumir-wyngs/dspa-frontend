@@ -83,6 +83,35 @@ const createHeatmapDataset = (rows, sequenceLength) => ({
     dataHeatmap: rows.flatMap(({ cells }) => cells),
 });
 
+const applyHeatmapDataset = (heatmapElement, dataset) => {
+    if (
+        !heatmapElement ||
+        dataset.yDomain.length === 0 ||
+        !heatmapElement.setHeatmapData
+    ) {
+        return;
+    }
+
+    heatmapElement.setHeatmapData(dataset.xDomain, dataset.yDomain, dataset.dataHeatmap);
+
+    requestAnimationFrame(() => {
+        if (!heatmapElement?.heatmapInstance) {
+            return;
+        }
+
+        heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
+        heatmapElement.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
+
+        if (typeof heatmapElement.heatmapInstance.state?.emitResize === "function") {
+            heatmapElement.heatmapInstance.state.emitResize();
+        }
+
+        if (typeof heatmapElement.applyZoomTranslation === "function") {
+            heatmapElement.applyZoomTranslation();
+        }
+    });
+};
+
 const NightingaleComponent = ({
     proteinData, 
     pdbIds, 
@@ -480,24 +509,83 @@ const NightingaleComponent = ({
                 ];
 
             heatmapConfigurations.forEach(({ ref, dataset }) => {
-                if (
-                    ref.current &&
-                    dataset.yDomain.length > 0 &&
-                    checkDimensions(ref.current) &&
-                    ref.current.setHeatmapData
-                ) {
-                    ref.current.setHeatmapData(dataset.xDomain, dataset.yDomain, dataset.dataHeatmap);
-
-                    requestAnimationFrame(() => {
-                        if (ref.current?.heatmapInstance) {
-                            ref.current.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
-                            ref.current.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
-                        }
-                    });
+                if (ref.current && checkDimensions(ref.current)) {
+                    applyHeatmapDataset(ref.current, dataset);
                 }
             });
         });
     }, [
+        shouldSplitHeatmap,
+        defaultHeatmapDataset,
+        matchingHeatmapDataset,
+        otherHeatmapDataset,
+    ]);
+
+    useEffect(() => {
+        if (!showHeatmap) {
+            return undefined;
+        }
+
+        let isCancelled = false;
+        let resizeObserver = null;
+        let resizeHandler = null;
+
+        customElements.whenDefined("nightingale-sequence-heatmap").then(() => {
+            if (isCancelled) {
+                return;
+            }
+
+            const heatmapConfigurations = shouldSplitHeatmap
+                ? [
+                    {
+                        ref: matchingScoreBarcodeContainer,
+                        dataset: matchingHeatmapDataset,
+                    },
+                    {
+                        ref: otherScoreBarcodeContainer,
+                        dataset: otherHeatmapDataset,
+                    },
+                ]
+                : [
+                    {
+                        ref: scoreBarcodeContainer,
+                        dataset: defaultHeatmapDataset,
+                    },
+                ];
+
+            const handleResize = () => {
+                heatmapConfigurations.forEach(({ ref, dataset }) => {
+                    if (ref.current && checkDimensions(ref.current)) {
+                        applyHeatmapDataset(ref.current, dataset);
+                    }
+                });
+            };
+            resizeHandler = handleResize;
+
+            resizeObserver = new ResizeObserver(() => {
+                requestAnimationFrame(handleResize);
+            });
+
+            heatmapConfigurations.forEach(({ ref }) => {
+                if (ref.current) {
+                    resizeObserver.observe(ref.current);
+                }
+            });
+
+            window.addEventListener("resize", handleResize);
+        });
+
+        return () => {
+            isCancelled = true;
+            if (resizeHandler) {
+                window.removeEventListener("resize", resizeHandler);
+            }
+            if (resizeObserver) {
+                resizeObserver.disconnect();
+            }
+        };
+    }, [
+        showHeatmap,
         shouldSplitHeatmap,
         defaultHeatmapDataset,
         matchingHeatmapDataset,
