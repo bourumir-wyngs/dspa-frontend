@@ -10,7 +10,7 @@ import ProteinVisualization from './components/ProteinView';
 import ExperimentInfo from './components/ExperimentView';
 import ExperimentsOverview from './components/ExperimentsOverview';
 import Impressum from './components/Impressum';
-import Condition from './components/conditionView';
+import Condition from './components/ConditionView';
 import LoginForm from './components/LoginForm';
 
 // Styles Import
