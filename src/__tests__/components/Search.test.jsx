@@ -5,9 +5,10 @@ import ProteinSearch from '../../components/Search';
 
 // Mock react-router-dom
 const mockNavigate = jest.fn();
+let mockLocationState = null;
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockNavigate,
-  useLocation: () => ({ state: null })
+  useLocation: () => ({ state: mockLocationState })
 }), { virtual: true });
 
 // Mock config
@@ -25,6 +26,7 @@ jest.mock('../../components/ProteinSearchResults', () => {
 describe('ProteinSearch Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLocationState = null;
     global.fetch = jest.fn();
   });
 
@@ -65,6 +67,19 @@ describe('ProteinSearch Component', () => {
     });
   });
 
+  it('shows error when the request is rejected', async () => {
+    global.fetch.mockRejectedValueOnce(new Error('Network error'));
+
+    render(<ProteinSearch />);
+
+    fireEvent.change(screen.getByRole('textbox'), { target: { value: 'invalid' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(screen.getByText('Error: Network error')).toBeInTheDocument();
+    });
+  });
+
   it('navigates when exactly one result is found', async () => {
     global.fetch.mockResolvedValueOnce({
       json: async () => ({
@@ -100,6 +115,35 @@ describe('ProteinSearch Component', () => {
 
     await waitFor(() => {
       expect(screen.getByTestId('mock-search-results')).toHaveTextContent('Results: 2');
+    });
+  });
+
+  it('re-runs a search from router state on mount', async () => {
+    mockLocationState = {
+      searchTerm: 'ATP synthase',
+      searchResults: {
+        success: true,
+        table: [{ proteinName: 'OLD1' }, { proteinName: 'OLD2' }]
+      }
+    };
+
+    global.fetch.mockResolvedValueOnce({
+      json: async () => ({
+        success: true,
+        table: [{ proteinName: 'NEW1' }, { proteinName: 'NEW2' }, { proteinName: 'NEW3' }]
+      })
+    });
+
+    render(<ProteinSearch />);
+
+    expect(screen.getByRole('textbox')).toHaveValue('ATP synthase');
+
+    await waitFor(() => {
+      expect(global.fetch).toHaveBeenCalledWith('http://test-api.com/search?searchTerm=ATP%20synthase');
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-search-results')).toHaveTextContent('Results: 3');
     });
   });
 });

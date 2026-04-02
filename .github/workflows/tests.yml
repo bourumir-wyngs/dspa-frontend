@@ -1,0 +1,32 @@
+name: Run Tests
+
+on:
+  push:
+    branches:
+      - master
+      - ames/dev
+  pull_request:
+    branches:
+      - master
+      - ames/dev
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js ${{ matrix.node-version }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+          cache-dependency-path: dspa-frontend/package-lock.json
+      - name: Install dependencies
+        working-directory: dspa-frontend
+        run: npm ci
+      - name: Run tests
+        working-directory: dspa-frontend
+        run: CI=true npm test -- --coverage --watchAll=false

@@ -21,7 +21,13 @@ jest.mock('../../config.json', () => ({
 // Mock NightingaleComponent
 jest.mock('../../components/NightingaleComponent', () => {
   return function DummyNightingale(props) {
-    return <div data-testid="nightingale-component">Nightingale Component</div>;
+    return (
+      <div data-testid="nightingale-component">
+        <span>Nightingale Component</span>
+        <span>Selected PDB: {props.selectedPdbId}</span>
+        <span>PDB count: {props.pdbIds.length}</span>
+      </div>
+    );
   };
 });
 
@@ -55,6 +61,19 @@ describe('ProteinVisualization', () => {
     fetch.mockRejectedValueOnce(new Error('Network error'));
     renderComponent();
     
+    await waitFor(() => {
+      expect(screen.getByText(/Error: Failed to load protein data/)).toBeInTheDocument();
+    });
+  });
+
+  it('renders error state when the backend returns a non-ok response', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 500
+    });
+
+    renderComponent();
+
     await waitFor(() => {
       expect(screen.getByText(/Error: Failed to load protein data/)).toBeInTheDocument();
     });
@@ -94,5 +113,34 @@ describe('ProteinVisualization', () => {
     
     // Nightingale component should be rendered
     expect(screen.getByTestId('nightingale-component')).toBeInTheDocument();
+    expect(screen.getByText('Selected PDB: AF-P12345-F1')).toBeInTheDocument();
+    expect(screen.getByText('PDB count: 2')).toBeInTheDocument();
+  });
+
+  it('falls back to AlphaFold when the UniProt PDB lookup fails', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        proteinData: {
+          proteinName: 'P12345',
+          description: 'Test protein'
+        }
+      })
+    });
+
+    fetch.mockResolvedValueOnce({
+      ok: false,
+      status: 404
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.getByText('UniProt ID P12345')).toBeInTheDocument();
+    });
+
+    expect(screen.getByTestId('nightingale-component')).toBeInTheDocument();
+    expect(screen.getByText('Selected PDB: AF-P12345-F1')).toBeInTheDocument();
+    expect(screen.getByText('PDB count: 1')).toBeInTheDocument();
   });
 });
