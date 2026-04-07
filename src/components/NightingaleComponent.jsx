@@ -112,6 +112,34 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
     });
 };
 
+const RELAY_EVENT_MARKER = '__dspaRelayedHeatmapEvent';
+
+const relayHeatmapHighlightEvent = (event, sourceElement) => {
+    if (!sourceElement || event?.detail?.[RELAY_EVENT_MARKER]) {
+        return;
+    }
+
+    const detail = event?.detail;
+    if (detail == null) {
+        return;
+    }
+
+    const relayDetail = typeof detail === 'object' && detail !== null
+        ? { ...detail, [RELAY_EVENT_MARKER]: true }
+        : { value: detail, [RELAY_EVENT_MARKER]: true };
+
+    const managerElement = sourceElement.closest('nightingale-manager') || document.querySelector('nightingale-manager');
+    if (!managerElement) {
+        return;
+    }
+
+    managerElement.dispatchEvent(new CustomEvent('change', {
+        detail: relayDetail,
+        bubbles: true,
+        composed: true,
+    }));
+};
+
 const NightingaleComponent = ({
     proteinData, 
     pdbIds, 
@@ -452,7 +480,7 @@ const NightingaleComponent = ({
 
 
     const handleCustomEvent = (e) => {
-        console.log('Event received:', e.detail);
+        return e;
       };
 
     useEffect(() => {
@@ -529,6 +557,7 @@ const NightingaleComponent = ({
         let isCancelled = false;
         let resizeObserver = null;
         let resizeHandler = null;
+        const cleanupCallbacks = [];
 
         customElements.whenDefined("nightingale-sequence-heatmap").then(() => {
             if (isCancelled) {
@@ -552,6 +581,21 @@ const NightingaleComponent = ({
                         dataset: defaultHeatmapDataset,
                     },
                 ];
+
+            heatmapConfigurations.forEach(({ ref }) => {
+                if (!ref.current) {
+                    return;
+                }
+
+                const handleHeatmapHighlightChange = (event) => {
+                    relayHeatmapHighlightEvent(event, ref.current);
+                };
+
+                ref.current.addEventListener('change', handleHeatmapHighlightChange);
+                cleanupCallbacks.push(() => {
+                    ref.current?.removeEventListener('change', handleHeatmapHighlightChange);
+                });
+            });
 
             const handleResize = () => {
                 heatmapConfigurations.forEach(({ ref, dataset }) => {
@@ -577,6 +621,7 @@ const NightingaleComponent = ({
 
         return () => {
             isCancelled = true;
+            cleanupCallbacks.forEach((cleanup) => cleanup());
             if (resizeHandler) {
                 window.removeEventListener("resize", resizeHandler);
             }
