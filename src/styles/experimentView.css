@@ -91,8 +91,39 @@
     transition: background-color 0.3s;
 }
 
+.download-button:hover {
+    background-color: var(--main-color); 
+}
+
 .experiment-volcano-plots-wrapper {
     width: 100%;
     max-width: var(--volcano-plots-max-width);
     margin: 0 auto;
+}
+
+.significant-protein-cell-center {
+    text-align: center;
+}
+
+.significant-protein-cell-left {
+    text-align: left;
+}
+
+.significant-proteins-summary {
+    margin-top: var(--margin-top);
+    text-align: center;
+}
+
+.show-all-link-button {
+    border: none;
+    background: none;
+    padding: 0;
+    color: var(--main-color);
+    text-decoration: underline;
+    cursor: pointer;
+    font: inherit;
+}
+
+.show-all-link-button:hover {
+    color: var(--text-color-header);
 }

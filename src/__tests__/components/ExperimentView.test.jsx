@@ -140,6 +140,68 @@ describe('ExperimentView', () => {
     expect(firstProteinLink.getAttribute('href')).toBe('/visualize/P11111');
   });
 
+  it('limits significant proteins table to 25 rows and expands on show_all click', async () => {
+    const manyProteins = Array.from({ length: 30 }, (_, index) => ({
+      proteinAccession: `P${String(index + 1).padStart(5, '0')}`,
+      protein_description: `Protein ${index + 1}`,
+      maxLog2FC: index + 0.5,
+      n_peptides: index + 1,
+      comparison: `comparison-${index + 1}`,
+    }));
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            experimentData: {
+              experimentID: 'DYN-1',
+              perturbation: 'Heat shock',
+              differentialAbundanceDataList: [],
+              metaData: {
+                condition: 'Stress',
+                taxonomy_id: '9606',
+                strain: 'K12',
+                publication: 'Nature',
+                instrument: 'Orbitrap',
+                experiment: 'LiP-MS',
+                digestion_protocol: 'Protocol A',
+                protease: 'Trypsin',
+                pk_digestion_time_in_sec: 60,
+              },
+              significantProteins: manyProteins,
+            },
+          }),
+        });
+      }
+
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+
+    await settleEffects();
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(25);
+    expect(container.textContent).toContain('Showing 25 of 30,');
+    expect(container.textContent).toContain('show all');
+    expect(container.textContent).not.toContain('Protein 30');
+
+    const showAllButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'show all'
+    );
+
+    await act(async () => {
+      Simulate.click(showAllButton);
+    });
+
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(30);
+    expect(container.textContent).toContain('Protein 30');
+    expect(container.textContent).not.toContain('Showing 25 of 30,');
+  });
+
   it('downloads the QC PDF when requested', async () => {
     const originalCreateObjectURL = window.URL.createObjectURL;
     const originalRevokeObjectURL = window.URL.revokeObjectURL;

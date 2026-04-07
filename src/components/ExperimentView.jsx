@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import config from '../config.json';
 import VolcanoPlot from '../visualization/volcanoplot.js';
@@ -11,12 +11,14 @@ const SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS = {
     comparison: 'Comparison in which the displayed Max log2FC value was observed.'
 };
 
+const SIGNIFICANT_PROTEINS_INITIAL_LIMIT = 25;
 
 const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
     const [experimentData, setExperimentData] = useState([]);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
     const [qcPdfData, setQcPdfData] = useState(null);
+    const [showAllSignificantProteins, setShowAllSignificantProteins] = useState(false);
 
     const fetchExperimentData = useCallback(async () => {
         const url = `${config.apiEndpoint}experiment?experimentID=${experimentID}`;
@@ -78,6 +80,10 @@ const ExperimentInfo = () => {
     }, [fetchExperimentData]);
 
     const significantProteins = experimentData?.significantProteins || experimentData?.proteinScores || [];
+    const visibleSignificantProteins = showAllSignificantProteins
+        ? significantProteins
+        : significantProteins.slice(0, SIGNIFICANT_PROTEINS_INITIAL_LIMIT);
+    const hasMoreSignificantProteins = significantProteins.length > SIGNIFICANT_PROTEINS_INITIAL_LIMIT;
 
     return (
         <div>
@@ -150,17 +156,17 @@ const ExperimentInfo = () => {
                 <table className="condition-protein-table">
                     <thead>
                         <tr>
-                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.accession}>Accession</th>
-                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.description}>Description</th>
-                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.maxLog2FC}>Max log<sub>2</sub>FC</th>
-                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.significantPeptides}>Sig. peptides</th>
-                            <th className="condition-protein-table" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.comparison}>Comparison</th>
+                            <th className="condition-protein-table significant-protein-cell-center" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.accession}>Accession</th>
+                            <th className="condition-protein-table significant-protein-cell-left" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.description}>Description</th>
+                            <th className="condition-protein-table significant-protein-cell-center" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.maxLog2FC}>Max log<sub>2</sub>FC</th>
+                            <th className="condition-protein-table significant-protein-cell-center" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.significantPeptides}>Sig. peptides</th>
+                            <th className="condition-protein-table significant-protein-cell-center" title={SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS.comparison}>Comparison</th>
                         </tr>
                     </thead>
                     <tbody>
-                        {significantProteins.map((protein, index) => (
+                        {visibleSignificantProteins.map((protein, index) => (
                             <tr key={`${protein.proteinAccession || protein.pg_protein_accessions}-${index}`} className="protein-row">
-                                <td>
+                                <td className="significant-protein-cell-center">
                                     {protein.proteinAccession || protein.pg_protein_accessions ? (
                                         <a
                                             href={`/visualize/${protein.proteinAccession || protein.pg_protein_accessions}`}
@@ -171,14 +177,26 @@ const ExperimentInfo = () => {
                                         </a>
                                     ) : 'N/A'}
                                 </td>
-                                <td>{protein.protein_description || 'N/A'}</td>
-                                <td>{typeof protein.maxLog2FC === 'number' ? protein.maxLog2FC.toFixed(2) : 'N/A'}</td>
-                                <td>{protein.n_peptides ?? 'N/A'}</td>
-                                <td>{protein.comparison || protein.dpx_comparison || 'N/A'}</td>
+                                <td className="significant-protein-cell-left">{protein.protein_description || 'N/A'}</td>
+                                <td className="significant-protein-cell-center">{typeof protein.maxLog2FC === 'number' ? protein.maxLog2FC.toFixed(2) : 'N/A'}</td>
+                                <td className="significant-protein-cell-center">{protein.n_peptides ?? 'N/A'}</td>
+                                <td className="significant-protein-cell-center">{protein.comparison || protein.dpx_comparison || 'N/A'}</td>
                             </tr>
                         ))}
                     </tbody>
                 </table>
+                {hasMoreSignificantProteins && !showAllSignificantProteins && (
+                    <div className="significant-proteins-summary">
+                        Showing {SIGNIFICANT_PROTEINS_INITIAL_LIMIT} of {significantProteins.length},{' '}
+                        <button
+                            type="button"
+                            className="show-all-link-button"
+                            onClick={() => setShowAllSignificantProteins(true)}
+                        >
+                            show all
+                        </button>
+                    </div>
+                )}
                 </div>
             </div>
             </div>
