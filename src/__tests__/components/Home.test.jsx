@@ -126,6 +126,8 @@ describe('Home', () => {
     const searchInput = container.querySelector('#protein-search');
     const searchForm = container.querySelector('form');
 
+    expect(searchInput.getAttribute('placeholder')).toBe('P0A9P4');
+
     act(() => {
       Simulate.change(searchInput, { target: { value: 'HSP90AA1' } });
     });

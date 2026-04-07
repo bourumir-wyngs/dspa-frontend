@@ -200,6 +200,7 @@ function Home() {
             <input
               id="protein-search"
               type="text"
+              placeholder="P0A9P4"
               value={searchTerm}
               onChange={handleProteinNameChange}
             />
