@@ -139,7 +139,7 @@ const ExperimentInfo = () => {
                 <div >
                 <div className="protein-view-section">
                 <h2  className="centered-heading" > Volcano Plots per comparison</h2><br />
-                    <div>
+                    <div className="experiment-volcano-plots-wrapper">
                         <VolcanoPlot
                             differentialAbundanceDataList={differentialAbundanceData}
                         />

@@ -50,6 +50,7 @@ body,h1,h2,h3,h4,h5,h6 {font-family: "Raleway", sans-serif}
   --margin-left: 0px;
   --margin-right: 0px;
   --gap: 15px;
+  --volcano-plots-max-width: 100em;
   --transition: background-color 0.3s ease-in-out;
 }
 

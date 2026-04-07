@@ -91,6 +91,8 @@
     transition: background-color 0.3s;
 }
 
-.download-button:hover {
-    background-color: var(--main-color); 
+.experiment-volcano-plots-wrapper {
+    width: 100%;
+    max-width: var(--volcano-plots-max-width);
+    margin: 0 auto;
 }

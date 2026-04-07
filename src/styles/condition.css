@@ -294,6 +294,7 @@ select:focus {
 
 .condition-volcano-plot-wrapper > div {
     width: 100%;
+    max-width: var(--volcano-plots-max-width);
 }
 
 .condition-go-enrichment-wrapper {
