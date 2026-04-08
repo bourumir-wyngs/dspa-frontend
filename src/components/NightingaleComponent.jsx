@@ -924,4 +924,5 @@ const NightingaleComponent = ({
     );
 };
 export default NightingaleComponent;
+export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset };
     
