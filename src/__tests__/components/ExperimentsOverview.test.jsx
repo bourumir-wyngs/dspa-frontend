@@ -1,4 +1,5 @@
 import React, { act } from 'react';
+import '@testing-library/jest-dom';
 import { createRoot } from 'react-dom/client';
 import { Simulate } from 'react-dom/test-utils';
 
@@ -45,6 +46,14 @@ const experimentsResponse = {
       condition: 'Recovery',
       protease: 'LysC',
       doi: '',
+    },
+    {
+      dynaprot_experiment: 'DYN-3',
+      organism: 'Human',
+      perturbation: 'Heat',
+      condition: '',
+      protease: '',
+      doi: null,
     },
   ],
 };
@@ -122,6 +131,7 @@ describe('ExperimentsOverview', () => {
     });
 
     expect(container.textContent).toContain('DYN-1');
+    expect(container.textContent).toContain('DYN-3');
     expect(container.textContent).not.toContain('DYN-2');
 
     const dataRows = container.querySelectorAll('tbody tr');
@@ -131,5 +141,71 @@ describe('ExperimentsOverview', () => {
     });
 
     expect(mockNavigate).toHaveBeenCalledWith('/experiment/DYN-1');
+  });
+
+  it('combines multiple filters to narrow results', async () => {
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+
+    await settleEffects();
+
+    const clickFilterOption = (testId, label) => {
+      const button = Array.from(container.querySelectorAll(`[data-testid="${testId}"] button`))
+        .find((candidate) => candidate.textContent === label);
+
+      act(() => {
+        Simulate.click(button);
+      });
+    };
+
+    clickFilterOption('Filter by perturbation...', 'Heat');
+    clickFilterOption('Filter by organism...', 'Human');
+    clickFilterOption('Filter by protease...', 'Trypsin');
+
+    expect(container.textContent).toContain('DYN-1');
+    expect(container.textContent).not.toContain('DYN-2');
+    expect(container.textContent).not.toContain('DYN-3');
+  });
+
+  it('clears a filter and restores all experiments', async () => {
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+
+    await settleEffects();
+
+    const perturbationButtons = container.querySelectorAll('[data-testid="Filter by perturbation..."] button');
+    const heatButton = Array.from(perturbationButtons).find((button) => button.textContent === 'Heat');
+    const clearButton = Array.from(perturbationButtons).find((button) => button.textContent === 'Clear');
+
+    act(() => {
+      Simulate.click(heatButton);
+    });
+
+    expect(container.textContent).not.toContain('DYN-2');
+
+    act(() => {
+      Simulate.click(clearButton);
+    });
+
+    expect(container.textContent).toContain('DYN-1');
+    expect(container.textContent).toContain('DYN-2');
+    expect(container.textContent).toContain('DYN-3');
+  });
+
+  it('renders N/A for missing condition, protease, and doi values', async () => {
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+
+    await settleEffects();
+
+    const rows = Array.from(container.querySelectorAll('tbody tr'));
+    const dyn3Row = rows.find((row) => row.textContent.includes('DYN-3'));
+
+    expect(dyn3Row).toHaveTextContent('Human');
+    expect(dyn3Row).toHaveTextContent('Heat');
+    expect(dyn3Row.textContent.match(/N\/A/g)?.length).toBeGreaterThanOrEqual(3);
   });
 });

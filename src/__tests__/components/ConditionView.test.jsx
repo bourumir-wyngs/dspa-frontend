@@ -46,7 +46,10 @@ jest.mock('../../visualization/ProteinScoresTable.js', () => ({
 import Condition from '../../components/ConditionView';
 
 describe('ConditionView', () => {
+  const originalConsoleError = console.error;
+
   beforeEach(() => {
+    console.error = jest.fn();
     mockNavigate.mockReset();
     mockUseParams.mockReset();
     mockUseParams.mockReturnValue({ selectedCondition: 'heat-shock' });
@@ -137,6 +140,7 @@ describe('ConditionView', () => {
   });
 
   afterEach(() => {
+    console.error = originalConsoleError;
     jest.restoreAllMocks();
   });
 
@@ -170,5 +174,97 @@ describe('ConditionView', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/condition/cold-shock');
     });
+  });
+
+  it('updates the displayed protein and dependent panels when a protein is clicked', async () => {
+    render(<Condition />);
+
+    expect(await screen.findByText(/Condition - Heat shock/i)).toBeInTheDocument();
+    expect(await screen.findByTestId('volcano-plot')).toHaveTextContent('P11111');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Show P22222' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('volcano-plot')).toHaveTextContent('P22222');
+    });
+
+    expect(screen.getByRole('heading', { level: 2, name: 'P22222' })).toBeInTheDocument();
+    expect(await screen.findByText(/Dose-Response-Data for Peptides in P22222/i)).toBeInTheDocument();
+
+    const proteinFetches = global.fetch.mock.calls
+      .map(([url]) => url)
+      .filter((url) => url.includes('proteins?proteinName='));
+    expect(proteinFetches.some((url) => url.includes('proteinName=P22222'))).toBe(true);
+
+    const doseResponseFetches = global.fetch.mock.calls
+      .map(([url]) => url)
+      .filter((url) => url.includes('doseresponse?'));
+    expect(doseResponseFetches.some((url) => url.includes('proteinName=P22222'))).toBe(true);
+  });
+
+  it('renders the condition value when no label is available', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            conditions: [{ value: 'heat-shock' }],
+          }),
+        });
+      }
+
+      if (url.includes('condition/data?condition=heat-shock')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            conditionData: {
+              condition: 'heat-shock',
+              differentialAbundanceDataList: [],
+              experimentIDsList: [],
+              proteinScoresTable: [],
+              goTerms: [],
+              doseResponseExperiments: [],
+            },
+          }),
+        });
+      }
+
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({ proteinData: {} }),
+      });
+    });
+
+    render(<Condition />);
+
+    expect(await screen.findByText('Condition - heat-shock')).toBeInTheDocument();
+  });
+
+  it('shows an error message when the condition request fails', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            conditions: [{ value: 'heat-shock', label: 'Heat shock' }],
+          }),
+        });
+      }
+
+      if (url.includes('condition/data?condition=heat-shock')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500,
+        });
+      }
+
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    render(<Condition />);
+
+    expect(await screen.findByText(/Error: Error: HTTP error! Status: 500/i)).toBeInTheDocument();
   });
 });
