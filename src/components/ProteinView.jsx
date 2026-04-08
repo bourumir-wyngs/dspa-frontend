@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import config from '../config.json';
-import { useParams, useNavigate } from 'react-router-dom'; 
+import { useParams } from 'react-router-dom';
 import NightingaleComponent from './NightingaleComponent';
 
 async function getPdbIds(uniprotAccession) {
@@ -40,7 +40,7 @@ async function getPdbIds(uniprotAccession) {
 
 function ProteinVisualizationComponents({ proteinData, pdbIds, loading, error }) {
     const [selectedPdbId, setSelectedPdbId] = useState("");
-    const [selectedExperiment, setSelectedExperiment] = useState("");
+    const [selectedExperiment] = useState("");
 
     useEffect(() => {
         if (pdbIds && pdbIds.length > 0) {
@@ -78,11 +78,8 @@ const ProteinVisualization = () => {
     
     const [proteinData, setProteinData] = useState({});
     const [pdbIds, setPdbIds] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    const navigate = useNavigate();
     
     const fetchProteinData = useCallback(async () => {
         setLoading(true);

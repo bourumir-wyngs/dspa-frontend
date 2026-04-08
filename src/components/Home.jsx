@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState } from "react";
 import "@nightingale-elements/nightingale-sequence";
 import config from "../config.json";
 import { useLocation, useNavigate } from "react-router-dom";
-import ProteinSearchResults from './ProteinSearchResults.jsx';
 import proteinDynamics from "../protein_dynamics.gif";
 
 const getConditionOptionLabel = (conditionOption) => {
@@ -28,9 +27,6 @@ const getConditionOptionValue = (conditionOption) => {
 function Home() {
   const location = useLocation();
   const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || '');
-  const [error, setError] = useState("");
-  const { searchResults: initialSearchResults } = location.state || {};
-  const [searchResults, setSearchResults] = useState(initialSearchResults || null);
   const [conditions, setconditions] = useState([]);
   const [selectedCondition, setSelectedCondition] = useState("");
 
@@ -57,23 +53,6 @@ function Home() {
     setSearchTerm(event.target.value);
   };
 
-  const performSearch = async (searchTerm) => {
-    try {
-      const queryParams = `searchTerm=${encodeURIComponent(searchTerm)}`;
-      const url = `${config.apiEndpoint}search?${queryParams}`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      if (data.success) {
-        setSearchResults(data.results);
-      } else {
-        throw new Error(data.message || "Failed to fetch data");
-      }
-    } catch (err) {
-      setError(err.message);
-    }
-  };
-
   useEffect(() => {
     const controller = new AbortController();
     const fetchconditions = async () => {
@@ -88,7 +67,6 @@ function Home() {
         } catch (error) {
             if (error.name !== 'AbortError') {
                 console.error("Error fetching conditions:", error);
-                setError(error.message);
             }
         }
     };
@@ -131,12 +109,6 @@ function Home() {
     };
   }, []);
 
-
-  useEffect(() => {
-    if (location.state?.searchTerm) {
-      performSearch(location.state.searchTerm);
-    }
-  }, [location.state?.searchTerm]);
 
   return (
     <>

@@ -104,9 +104,6 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
 
     const container = d3.select(svgRef.current);
     container.selectAll('*').remove(); 
-    const containerNode = svgRef.current;
-    const containerRect = containerNode.getBoundingClientRect();
-
     const sortedDataList = [...differentialAbundanceDataList].sort((a, b) => {
       const aStats = getAxisRange(a.data);
       const bStats = getAxisRange(b.data);
@@ -114,7 +111,6 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
     });
 
     const allData = sortedDataList.flatMap(exp => exp.data);
-    const xExtent = d3.extent(allData, d => d.diff);
     const cutoffY = -Math.log10(CUTOFF_ADJ_P);
     const yMax = Math.max(d3.max(allData, d => -Math.log10(d.adj_pval)) ?? 0, cutoffY);
     

@@ -21,7 +21,7 @@ import "@dspa-nightingale/nightingale-track";
  */
 function getLipScoreColor(score) {
     for (const entry of LIP_COLOR_SCALE) {
-        if (score > entry.threshold) return entry.color;
+        if (score >= entry.threshold) return entry.color;
     }
     return LIP_COLOR_SCALE[LIP_COLOR_SCALE.length - 1].color;
 }
@@ -334,17 +334,13 @@ const NightingaleComponent = ({
     }, [proteinData]);
 
     const handleExperimentClick = (experimentID,index) => {
-        let lipScoreString = JSON.stringify(Array(sequenceLength).fill(-1));
-
         if (experimentID === selectedExperiment) {
-            setSelectedExperiment('');
-        } else {
-            setSelectedExperiment(experimentID);
-            const lipScoreArray = getLipScoreDataByExperimentID(experimentID);
-            lipScoreString = JSON.stringify(lipScoreArray);  
+            return;
         }
 
-        setLipscoreString(lipScoreString);
+        const lipScoreArray = getLipScoreDataByExperimentID(experimentID);
+        setSelectedExperiment(experimentID);
+        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(-1)));
     };
 
     useEffect(() => {
@@ -404,20 +400,34 @@ const NightingaleComponent = ({
             tooltip.style.visibility = "hidden";
         };
 
+        const eventListeners = [];
+
         const updateElementAttributes = (ref, id) => {
             if (ref.current) {
                 ref.current.setAttribute("id", id);
                 Object.keys(defaultAttributes).forEach(key => {
                     ref.current.setAttribute(key, defaultAttributes[key]);
                 });
+                
                 ref.current.addEventListener('customEvent', handleCustomEvent);
+                eventListeners.push({ element: ref.current, type: 'customEvent', listener: handleCustomEvent });
             }
         };
 
         const updateTracks = () => {
-            const trackIds = ["domain", "site", "binding", "mod_res", "disulfid", "helix", "strand", "coiled"];
-            trackIds.forEach(id => {
-                const trackElement = document.querySelector(`#${id}`);
+            const tracks = [
+                { id: "domain", ref: domainRef },
+                { id: "site", ref: siteRef },
+                { id: "binding", ref: bindingRef },
+                { id: "mod_res", ref: modifiedResidueRef },
+                { id: "disulfid", ref: disulfidRef },
+                { id: "helix", ref: alphaHelixRef },
+                { id: "strand", ref: betastrandRef },
+                { id: "coiled", ref: coiledCoilRef }
+            ];
+
+            tracks.forEach(({ id, ref }) => {
+                const trackElement = ref.current;
                 if (trackElement) {
                     let trackFeatures = mappedFeatures.filter(({ type }) => type.toUpperCase() === id.toUpperCase());
                 
@@ -438,7 +448,8 @@ const NightingaleComponent = ({
 
                     }
                     trackElement.data = trackFeatures;
-                    trackElement.addEventListener("mousemove", (event) => {
+
+                    const mouseMoveHandler = (event) => {
                         const trackLength = trackElement.getAttribute("length");
                         const relativeX = event.offsetX / trackElement.clientWidth;
                         const position = Math.floor(relativeX * trackLength);
@@ -447,10 +458,14 @@ const NightingaleComponent = ({
                         const feature = trackFeatures.find(f => f.start <= position && f.end >= position);
                         if (feature) {
                             updateTooltip(feature.tooltipContent, event.pageX, event.pageY);
-                      }
-                    });
-                    trackElement.addEventListener("mouseleave", hideTooltip);
+                        }
+                    };
 
+                    trackElement.addEventListener("mousemove", mouseMoveHandler);
+                    eventListeners.push({ element: trackElement, type: 'mousemove', listener: mouseMoveHandler });
+
+                    trackElement.addEventListener("mouseleave", hideTooltip);
+                    eventListeners.push({ element: trackElement, type: 'mouseleave', listener: hideTooltip });
                 }
             });
         };
@@ -476,6 +491,12 @@ const NightingaleComponent = ({
         });
     
         updateTracks();
+
+        return () => {
+            eventListeners.forEach(({ element, type, listener }) => {
+                element.removeEventListener(type, listener);
+            });
+        };
     }, [mappedFeatures, trackHeight, proteinData?.featuresData?.sequence]);
 
 
