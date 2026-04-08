@@ -1,5 +1,5 @@
 import * as d3 from 'd3';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 
 const COLOR_HIGHLIGHTED_PROTEIN = '#ffa500';
@@ -21,17 +21,16 @@ const COLOR_TOOLTIP_BORDER = 'black';
 
 
 
+function cssSafeKey(key) {
+  return key.replace(/[^\w-]/g, '_');
+}
+
 const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) => {
   const svgRef = useRef();
   const [page, setPage] = useState(0);
   const [showAll, setShowAll] = useState(false);
 
-
-  function cssSafeKey(key) {
-    return key.replace(/[^\w-]/g, '_'); 
-  }
-
-  function getBaseFill(d) {
+  const getBaseFill = useCallback((d) => {
     if (d.pg_protein_accessions === highlightedProtein) return COLOR_HIGHLIGHTED_PROTEIN;
 
     const isSignificant = (d.adj_pval != null) && (d.adj_pval < CUTOFF_ADJ_P) && (Math.abs(d.diff) > CUTOFF_LOG2FC);
@@ -40,12 +39,12 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
     if (d.diff > 0) return COLOR_UP; // significant up
     if (d.diff < 0) return COLOR_DOWN; // significant down
     return COLOR_OTHER;
-  }
-  
-  function highlightOthers(pepKey, shouldHighlight) {
+  }, [highlightedProtein]);
+
+  const highlightOthers = useCallback((pepKey, shouldHighlight) => {
     const className = `.pep-key-${cssSafeKey(pepKey)}`;
     const container = d3.select(svgRef.current);
-  
+
     container.selectAll(className)
       .classed('is-hovered', shouldHighlight)
       .attr('fill', function(d) {
@@ -65,7 +64,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           d3.select(this).raise();
         }
       });
-  }
+  }, [getBaseFill, highlightedProtein]);
 
   function downloadCSV() {
     if (!Array.isArray(differentialAbundanceDataList)) return;
@@ -294,7 +293,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         .attr("font-family", "Raleway, Arial, sans-serif")
         .text(title);
     });
-  }, [differentialAbundanceDataList, highlightedProtein, page, showAll]);
+  }, [differentialAbundanceDataList, highlightedProtein, page, showAll, getBaseFill, highlightOthers]);
 
   const totalPages = Math.ceil((differentialAbundanceDataList?.length || 0) / 2);
 

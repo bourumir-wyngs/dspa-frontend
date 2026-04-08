@@ -184,9 +184,9 @@ const Condition = () => {
                     setAllGoTerms(rawData.conditionData.goTerms);
                     setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);   
                     setDoseResponseExperiments(conditionData.doseResponseExperiments);
-                    if (doseResponseExperiments.length > 0 && conditionData.proteinScoresTable?.[0]?.proteinAccession) {
+                    if (conditionData.doseResponseExperiments.length > 0 && conditionData.proteinScoresTable?.[0]?.proteinAccession) {
                         await fetchDoseResponseData(
-                            doseResponseExperiments,
+                            conditionData.doseResponseExperiments,
                             conditionData.proteinScoresTable[0].proteinAccession,
                             signal
                         ); }
@@ -205,7 +205,7 @@ const Condition = () => {
         return () => {
             abortController.abort(); 
         };
-    }, [selectedCondition])
+    }, [selectedCondition, fetchDoseResponseData])
 
     useEffect(() => {
         const abortController = new AbortController();

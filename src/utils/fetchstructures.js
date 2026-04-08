@@ -1,4 +1,4 @@
-async function getPdbIds(uniprotAccession) {
+export async function getPdbIds(uniprotAccession) {
     const url = `https://rest.uniprot.org/uniprotkb/${uniprotAccession}.json`;
     
     try {

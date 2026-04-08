@@ -21,16 +21,6 @@ export function SumLipScoreVisualization({ data, experimentMetaData }) {
     // Remove any existing SVG
     d3.select("#sumlipscorebarplot").selectAll("*").remove();
 
-    const dynaprot_colors = [
-        "#be9fd2",
-        "#d89853",
-        "#b3c5da",
-        "#d35eb6",
-        "#71b6c8",
-        "#d9ce74",
-        "#99c2c5"
-    ];
-
     const perturbationColors = {
         "low": "#90EE90", // Light green
         "medium": "#FFD700", // Yellow
@@ -68,11 +58,6 @@ export function SumLipScoreVisualization({ data, experimentMetaData }) {
         .domain([0, d3.max(formattedData, d => d.score)])
         .nice()
         .range([height, 0]);
-
-    const color = d3.scaleSequential(d3.interpolateBlues)
-        .domain([0, d3.max(formattedData, d => d.score)])
-        .range(["#FEB562","#FF4169"]);
-
 
     svg.append("g")
         .attr("transform", `translate(0,${height})`)

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import config from '../config.json';
 import ProteinSearchResults from './ProteinSearchResults.jsx';
@@ -16,19 +16,13 @@ const ProteinSearch = () => {
     setSearchTerm(event.target.value);
   };
 
-  useEffect(() => {
-    if (location.state?.searchTerm) {
-      performSearch(location.state.searchTerm);
-    }
-  }, [location.state?.searchTerm]);
-
-  const performSearch = async (searchTerm) => {
+  const performSearch = useCallback(async (searchTerm) => {
     try {
       const queryParams = `searchTerm=${encodeURIComponent(searchTerm)}`;
       const url = `${config.apiEndpoint}search?${queryParams}`;
       const response = await fetch(url);
       const data = await response.json();
-      
+
       if (data.success) {
         if (data.table.length === 1) {
           const result = data.table[0];
@@ -42,7 +36,13 @@ const ProteinSearch = () => {
     } catch (err) {
       setError(err.message);
     }
-  };
+  }, [navigate]);
+
+  useEffect(() => {
+    if (location.state?.searchTerm) {
+      performSearch(location.state.searchTerm);
+    }
+  }, [location.state?.searchTerm, performSearch]);
 
   useEffect(() => {
     if (initialSearchResults) {

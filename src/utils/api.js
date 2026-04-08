@@ -1,6 +1,7 @@
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
 import config from '../config.json';
+import { getPdbIds } from './fetchExtraData';
 
 const BASE_URL = process.env.REACT_APP_API_BASE_URL || 'https://api.example.com';
 
@@ -39,7 +40,7 @@ export const useProteinData = () => {
   const fetchProteinData = useCallback(async (proteinName) => {
       setLoading(true);
       setError('');
-      const taxonomyID = 9606;  // Hardcoded for now, you can parameterize this if needed
+      // const taxonomyID = 9606;  // Hardcoded for now, you can parameterize this if needed
 
       const queryParams = `proteinName=${encodeURIComponent(proteinName)}`;
       const url = `${config.apiEndpoint}proteins?${queryParams}`;

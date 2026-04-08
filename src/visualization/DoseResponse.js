@@ -105,7 +105,7 @@ const DoseResponseCurves = ({ points, curves }) => {
 
   }, [points, curves, page]);
 
-  const totalPages = Math.ceil((points && d3.group(points, d => d.pep_grouping_key).size || 0) / 8);
+  const totalPages = Math.ceil(((points && d3.group(points, d => d.pep_grouping_key).size) || 0) / 8);
 
   return (
     <div>
