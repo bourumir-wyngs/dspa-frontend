@@ -29,8 +29,8 @@ jest.mock('../../visualization/DoseResponse.js', () => (props) => (
 jest.mock('../../visualization/ProteinScoresTable.js', () => ({
   ProteinScoresTable: ({ experimentData, onProteinClick }) => (
     <div>
-      <div data-testid="protein-scores-table">{experimentData.map(item => item.proteinAccession).join(',')}</div>
-      {experimentData.map(item => (
+      <div data-testid="protein-scores-table">{(experimentData || []).map(item => item.proteinAccession).join(',')}</div>
+      {(experimentData || []).map(item => (
         <button
           key={item.proteinAccession}
           type="button"
@@ -43,7 +43,7 @@ jest.mock('../../visualization/ProteinScoresTable.js', () => ({
   )
 }));
 
-import Condition from '../../components/ConditionView';
+import Condition, { getPdbIds } from '../../components/ConditionView';
 
 describe('ConditionView', () => {
   const originalConsoleError = console.error;
@@ -266,5 +266,242 @@ describe('ConditionView', () => {
     render(<Condition />);
 
     expect(await screen.findByText(/Error: Error: HTTP error! Status: 500/i)).toBeInTheDocument();
+  });
+
+  describe('getPdbIds helper', () => {
+    it('returns AlphaFold + PDB IDs on success', async () => {
+      global.fetch = jest.fn(() => Promise.resolve({
+        ok: true,
+        json: async () => ({
+          uniProtKBCrossReferences: [
+            { database: 'PDB', id: '1ABC', properties: [{ key: 'Method', value: 'X-ray' }] }
+          ]
+        })
+      }));
+      const ids = await getPdbIds('P12345');
+      expect(ids).toHaveLength(2);
+      expect(ids[0].id).toBe('AF-P12345-F1');
+      expect(ids[1].id).toBe('1ABC');
+    });
+
+    it('returns only AlphaFold fallback on fetch failure', async () => {
+      global.fetch = jest.fn(() => Promise.reject(new Error('Network error')));
+      const ids = await getPdbIds('P12345');
+      expect(ids).toHaveLength(1);
+      expect(ids[0].id).toBe('AF-P12345-F1');
+    });
+
+    it('handles missing uniProtKBCrossReferences', async () => {
+      global.fetch = jest.fn(() => Promise.resolve({
+        ok: true,
+        json: async () => ({})
+      }));
+      const ids = await getPdbIds('P12345');
+      expect(ids).toHaveLength(1);
+      expect(ids[0].id).toBe('AF-P12345-F1');
+    });
+  });
+
+  describe('fetch failure handling', () => {
+    it('shows error when condition/allconditions fails', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({
+            ok: false,
+            json: async () => ({ success: false, message: 'Failed to fetch conditions' })
+          });
+        }
+        if (url.includes('condition/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ conditionData: { condition: 'heat-shock', doseResponseExperiments: [] } })
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      expect(await screen.findByText(/Error: Failed to fetch conditions/i)).toBeInTheDocument();
+    });
+
+    it('handles protein fetch failure gracefully', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, conditions: [{ value: 'heat-shock' }] }),
+          });
+        }
+        if (url.includes('condition/data?condition=heat-shock')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              conditionData: {
+                condition: 'heat-shock',
+                differentialAbundanceDataList: [],
+                experimentIDsList: ['EXP-1'],
+                proteinScoresTable: [{ proteinAccession: 'P11111' }],
+                goTerms: [],
+                doseResponseExperiments: [],
+              },
+            }),
+          });
+        }
+        if (url.includes('proteins?proteinName=')) {
+          return Promise.resolve({
+            ok: false,
+            statusText: 'Not Found'
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      expect(await screen.findByText(/Error fetching protein data: Failed to fetch protein data: Not Found/i)).toBeInTheDocument();
+    });
+
+    it('handles dose response fetch failure without crashing', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({ success: true, conditions: [{ value: 'heat-shock' }] }),
+          });
+        }
+        if (url.includes('condition/data?condition=heat-shock')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              conditionData: {
+                condition: 'heat-shock',
+                differentialAbundanceDataList: [],
+                experimentIDsList: ['EXP-1'],
+                proteinScoresTable: [{ proteinAccession: 'P11111' }],
+                goTerms: [],
+                doseResponseExperiments: ['DYN-1'],
+              },
+            }),
+          });
+        }
+        if (url.includes('proteins?proteinName=')) {
+          return Promise.resolve({ ok: true, json: async () => ({ proteinData: {} }) });
+        }
+        if (url.includes('rest.uniprot.org')) {
+          return Promise.resolve({ ok: true, json: async () => ({}) });
+        }
+        if (url.includes('doseresponse?')) {
+          return Promise.resolve({ ok: false, statusText: 'Server Error' });
+        }
+        return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+      });
+
+      render(<Condition />);
+      expect(await screen.findByText(/Error fetching protein data: Failed for DYN-1: Server Error/i)).toBeInTheDocument();
+    });
+  });
+
+  describe('conditional rendering', () => {
+    it('does not render dose-response section when no curves exist', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({ ok: true, json: async () => ({ success: true, conditions: [] }) });
+        }
+        if (url.includes('condition/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              conditionData: {
+                condition: 'heat-shock',
+                differentialAbundanceDataList: [],
+                experimentIDsList: [],
+                proteinScoresTable: [{ proteinAccession: 'P11111' }],
+                goTerms: [],
+                doseResponseExperiments: [],
+              },
+            }),
+          });
+        }
+        if (url.includes('proteins?')) {
+          return Promise.resolve({ ok: true, json: async () => ({ proteinData: {} }) });
+        }
+        if (url.includes('rest.uniprot.org')) {
+          return Promise.resolve({ ok: true, json: async () => ({}) });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      await screen.findByText(/Top proteins/i);
+      expect(screen.queryByText(/Dose-Response-Data for Peptides/i)).not.toBeInTheDocument();
+    });
+
+    it('renders safely when proteinScoresTable is empty', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({ ok: true, json: async () => ({ success: true, conditions: [] }) });
+        }
+        if (url.includes('condition/data')) {
+          return Promise.resolve({
+            ok: true,
+            json: async () => ({
+              conditionData: {
+                condition: 'heat-shock',
+                differentialAbundanceDataList: [],
+                experimentIDsList: [],
+                proteinScoresTable: [], // empty
+                goTerms: [],
+                doseResponseExperiments: [],
+              },
+            }),
+          });
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      expect(await screen.findByText(/Top proteins/i)).toBeInTheDocument();
+      // Should not show dose response or nightingale
+      expect(screen.queryByTestId('nightingale-component')).not.toBeInTheDocument();
+    });
+  });
+
+  describe('condition label/value handling', () => {
+    it('uses string directly if conditionOption is a string', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({ ok: true, json: async () => ({ success: true, conditions: ['string-condition'] }) });
+        }
+        if (url.includes('condition/data')) {
+          return new Promise(() => {}); // hang
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      // Before condition/data loads, it shows "Condition - heat-shock" initially from useParams
+      // But the dropdown should contain 'string-condition'
+      await waitFor(() => {
+        const select = screen.getByRole('combobox');
+        expect(select).toHaveTextContent('string-condition');
+      });
+    });
+
+    it('falls back to condition/value if label is missing in object', async () => {
+      global.fetch = jest.fn((url) => {
+        if (url.includes('condition/allconditions')) {
+          return Promise.resolve({ ok: true, json: async () => ({ success: true, conditions: [{ condition: 'fallback-cond', value: 'val-1' }] }) });
+        }
+        if (url.includes('condition/data')) {
+          return new Promise(() => {});
+        }
+        return Promise.resolve({ ok: true, json: async () => ({}) });
+      });
+
+      render(<Condition />);
+      await waitFor(() => {
+        const select = screen.getByRole('combobox');
+        expect(select).toHaveTextContent('fallback-cond');
+      });
+    });
   });
 });

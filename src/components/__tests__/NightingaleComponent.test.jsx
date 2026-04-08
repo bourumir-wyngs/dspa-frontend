@@ -50,7 +50,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset } from '../NightingaleComponent';
+import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, relayHeatmapHighlightEvent } from '../NightingaleComponent';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -105,6 +105,63 @@ describe('NightingaleComponent Utilities', () => {
             expect(dataset.dataHeatmap).toEqual([{ xValue: 1, yValue: 'exp1', score: 5 }]);
         });
     });
+    describe('getHeatmapTooltip', () => {
+        it('handles zero or NaN scores', () => {
+            const result1 = getHeatmapTooltip({ score: 0 });
+            expect(result1).toContain('no coverage');
+            
+            const result2 = getHeatmapTooltip({ score: NaN });
+            expect(result2).toContain('no coverage');
+        });
+
+        it('formats valid score correctly', () => {
+            const result = getHeatmapTooltip({ yValue: 'exp1', condition: 'CondA', score: 3.14159 });
+            expect(result).toContain('exp1');
+            expect(result).toContain('CondA');
+            expect(result).toContain('3.14');
+        });
+    });
+
+    describe('relayHeatmapHighlightEvent', () => {
+        it('dispatches relayed event to manager element', () => {
+            const manager = document.createElement('nightingale-manager');
+            const source = document.createElement('div');
+            manager.appendChild(source);
+            document.body.appendChild(manager);
+            
+            let receivedEvent = null;
+            manager.addEventListener('change', (e) => {
+                receivedEvent = e;
+            });
+            
+            const initialEvent = new CustomEvent('change', { detail: 'highlight-1' });
+            relayHeatmapHighlightEvent(initialEvent, source);
+            
+            expect(receivedEvent).not.toBeNull();
+            expect(receivedEvent.detail).toHaveProperty('__dspaRelayedHeatmapEvent', true);
+            expect(receivedEvent.detail.value).toBe('highlight-1');
+            
+            document.body.removeChild(manager);
+        });
+
+        it('prevents double firing if already relayed', () => {
+            const manager = document.createElement('nightingale-manager');
+            const source = document.createElement('div');
+            manager.appendChild(source);
+            document.body.appendChild(manager);
+            
+            let eventCount = 0;
+            manager.addEventListener('change', () => {
+                eventCount++;
+            });
+            
+            const initialEvent = new CustomEvent('change', { detail: { value: 'highlight-1', __dspaRelayedHeatmapEvent: true } });
+            relayHeatmapHighlightEvent(initialEvent, source);
+            
+            expect(eventCount).toBe(0);
+            document.body.removeChild(manager);
+        });
+    });
 });
 
 describe('NightingaleComponent Rendering', () => {
@@ -114,7 +171,8 @@ describe('NightingaleComponent Rendering', () => {
         proteinDescription: 'Test Protein',
         experimentIDsList: ['exp1', 'exp2'],
         lipscoreList: [
-            { experimentID: 'exp1', data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
+            { experimentID: 'exp1', data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] },
+            { experimentID: 'exp2', data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
         ],
         experimentMetaData: [
             { dpx_comparison: 'exp1', condition: 'CondA', dose: '10uM' }
@@ -158,6 +216,30 @@ describe('NightingaleComponent Rendering', () => {
         // When split, we expect specific labels
         expect(container.textContent).toContain('(CondA)');
         expect(container.textContent).toContain('(other conditions)');
+        expect(container.textContent).toContain('No experiment rows from other conditions.'); // Fallback text
+    });
+
+    it('renders fallback text when no matching rows exist for master condition', () => {
+        const noMatchData = {
+            ...mockProteinData,
+            differentialAbundanceData: {
+                'exp2': [{ index: 0, score: 5 }] // exp2 is not CondA
+            },
+            experimentMetaData: [
+                { dpx_comparison: 'exp2', condition: 'CondB' }
+            ]
+        };
+        const { container } = render(
+            <NightingaleComponent 
+                proteinData={noMatchData}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+                showHeatmap={true}
+                masterCondition="CondA"
+            />
+        );
+        expect(container.textContent).toContain('No experiment rows match this condition.');
     });
 
     it('renders unsplit heatmap when masterCondition is absent', () => {
@@ -200,5 +282,132 @@ describe('NightingaleComponent Rendering', () => {
         
         expect(container).toBeInTheDocument();
         expect(screen.getByText('Test Protein')).toBeInTheDocument();
+    });
+
+    describe('Experiment Fallbacks & Controls', () => {
+        it('uses passedExperimentIDs when valid', () => {
+            render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    passedExperimentIDs={['exp2']}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            // exp2 button should be present and selected
+            const button = screen.getByText('Experiment exp2');
+            expect(button).toHaveClass('selected');
+        });
+
+        it('falls back to proteinData.experimentIDsList', () => {
+            render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            // first experiment from list
+            const button = screen.getByText('10uM');
+            expect(button).toHaveClass('selected');
+        });
+
+        it('falls back to available lipscoreList experiments if experimentIDsList is empty', () => {
+            const data = {
+                ...mockProteinData,
+                experimentIDsList: []
+            };
+            render(
+                <NightingaleComponent 
+                    proteinData={data}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            const button = screen.getByText('10uM');
+            expect(button).toHaveClass('selected');
+        });
+
+        it('renders dropdown when experiment count > 5', () => {
+            const sixExperiments = ['exp1', 'exp2', 'exp3', 'exp4', 'exp5', 'exp6'];
+            const data = {
+                ...mockProteinData,
+                experimentIDsList: sixExperiments,
+                lipscoreList: sixExperiments.map(id => ({ experimentID: id, data: [] }))
+            };
+            const { container } = render(
+                <NightingaleComponent 
+                    proteinData={data}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            // buttons shouldn't be there, dropdown (select) should
+            expect(container.querySelector('.experiment-button')).toBeNull();
+            expect(container.querySelector('select')).toBeInTheDocument();
+        });
+
+        it('clicking the same experiment twice keeps selection', () => {
+            render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            const button = screen.getByText('10uM');
+            expect(button).toHaveClass('selected');
+            
+            fireEvent.click(button);
+            expect(button).toHaveClass('selected');
+        });
+    });
+
+    describe('Conditional track rendering', () => {
+        it('omits heatmap rows when showHeatmap={false}', () => {
+            const { container } = render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                    showHeatmap={false}
+                />
+            );
+            
+            const hasStructuralBarcode = Array.from(container.querySelectorAll('td'))
+                .some(td => td.textContent.trim() === 'Structural-Barcode');
+            expect(hasStructuralBarcode).toBe(false);
+        });
+
+        it('renders domain feature track if features exist', () => {
+            const { container } = render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            expect(screen.getByText('Domain')).toBeInTheDocument();
+        });
+
+        it('omits domain feature track if features do not exist', () => {
+            const noFeatures = { ...mockProteinData, featuresData: { features: [] } };
+            render(
+                <NightingaleComponent 
+                    proteinData={noFeatures}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+        });
     });
 });
