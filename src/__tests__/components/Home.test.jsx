@@ -158,4 +158,104 @@ describe('Home', () => {
 
     expect(mockNavigate).toHaveBeenCalledWith('/experiments');
   });
+
+  it('handles condition fetch failure gracefully', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: false,
+          json: async () => ({ success: false, message: 'Failed to load conditions' }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<Home />);
+    });
+    await settleEffects();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      "Error fetching conditions:",
+      expect.any(Error)
+    );
+
+    const conditionSelect = container.querySelector('#condition-select');
+    // Dropdown only has "Select a Condition" placeholder
+    expect(conditionSelect.options.length).toBe(1);
+
+    consoleSpy.mockRestore();
+  });
+
+  it('renders string and missing-label object conditions correctly', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            conditions: [
+              'string-condition',
+              { condition: 'object-cond-missing-label', value: 'val' },
+              { value: 'val-only' },
+              null,
+            ],
+          }),
+        });
+      }
+      return Promise.resolve();
+    });
+
+    await act(async () => {
+      root.render(<Home />);
+    });
+    await settleEffects();
+
+    const conditionSelect = container.querySelector('#condition-select');
+    const options = Array.from(conditionSelect.options).map((opt) => opt.textContent);
+    
+    expect(options).toEqual([
+      'Select a Condition',
+      'string-condition',
+      'object-cond-missing-label',
+      'val-only',
+      '' // null condition fallback
+    ]);
+  });
+
+  it('initializes search term from location state', async () => {
+    mockUseLocation.mockReturnValue({ state: { searchTerm: 'INITIAL_TERM' } });
+
+    await act(async () => {
+      root.render(<Home />);
+    });
+    await settleEffects();
+
+    const searchInput = container.querySelector('#protein-search');
+    expect(searchInput.value).toBe('INITIAL_TERM');
+  });
+
+  it('does not crash when resize observer runs', async () => {
+    let mockCallback;
+    global.ResizeObserver = class {
+      constructor(cb) { mockCallback = cb; }
+      observe() {}
+      disconnect() {}
+    };
+
+    await act(async () => {
+      root.render(<Home />);
+    });
+    await settleEffects();
+
+    // Trigger ResizeObserver artificially
+    await act(async () => {
+      if (mockCallback) mockCallback();
+    });
+
+    // Just verifying it doesn't crash
+    expect(container.querySelector('.home-container')).not.toBeNull();
+  });
 });
