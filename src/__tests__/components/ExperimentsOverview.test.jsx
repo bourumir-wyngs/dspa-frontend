@@ -208,4 +208,92 @@ describe('ExperimentsOverview', () => {
     expect(dyn3Row).toHaveTextContent('Heat');
     expect(dyn3Row.textContent.match(/N\/A/g)?.length).toBeGreaterThanOrEqual(3);
   });
+
+  it('handles backend response with success: false', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({
+      ok: true,
+      json: async () => ({ success: false, experiments: 'not an array' }),
+    }));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+    await settleEffects();
+
+    expect(consoleSpy).toHaveBeenCalledWith(
+      'Expected an array of experiments but got:',
+      expect.objectContaining({ success: false })
+    );
+
+    // It should just render an empty table
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(0);
+
+    consoleSpy.mockRestore();
+  });
+
+  it('handles fetch rejection safely', async () => {
+    global.fetch = jest.fn(() => Promise.reject(new Error('Network failure')));
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+    await settleEffects();
+
+    expect(consoleSpy).toHaveBeenCalledWith('Error fetching experiments:', expect.any(Error));
+
+    // It should render an empty table
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(0);
+
+    consoleSpy.mockRestore();
+  });
+
+  it('renders an empty list when experiments array is empty', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({
+      ok: true,
+      json: async () => ({ success: true, experiments: [] }),
+    }));
+
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+    await settleEffects();
+
+    const rows = container.querySelectorAll('tbody tr');
+    expect(rows.length).toBe(0);
+  });
+
+  it('clears one filter while another remains active', async () => {
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+    await settleEffects();
+
+    const clickFilterOption = (testId, label) => {
+      const button = Array.from(container.querySelectorAll(`[data-testid="${testId}"] button`))
+        .find((candidate) => candidate.textContent === label);
+      act(() => { Simulate.click(button); });
+    };
+
+    // Apply two filters
+    clickFilterOption('Filter by perturbation...', 'Heat');
+    clickFilterOption('Filter by organism...', 'Human');
+
+    // Only DYN-1 and DYN-3 match both
+    expect(container.textContent).toContain('DYN-1');
+    expect(container.textContent).not.toContain('DYN-2');
+    expect(container.textContent).toContain('DYN-3');
+
+    // Clear perturbation filter (leaving organism=Human active)
+    clickFilterOption('Filter by perturbation...', 'Clear');
+
+    // Since DYN-1 and DYN-3 are the only Human ones anyway, they remain.
+    // Let's verify DYN-2 (Mouse) is still NOT visible, proving organism filter works
+    expect(container.textContent).toContain('DYN-1');
+    expect(container.textContent).toContain('DYN-3');
+    expect(container.textContent).not.toContain('DYN-2');
+  });
 });

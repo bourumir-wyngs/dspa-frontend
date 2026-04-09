@@ -82,12 +82,19 @@ export function SumLipScoreVisualization({ data, experimentMetaData }) {
         .attr("height", d => height - y(d.score))
         .attr("fill", d => perturbationColors[d.perturbation])
         .on("mouseover", function(event, d) {
-            tooltip.html(`
-                <strong>${d.experiment}</strong><br>
-                Score: ${d.score}<br>
-                Condition: ${d.condition}<br>
-                Perturbation: ${d.perturbation}
-            `).style("visibility", "visible");
+            // Safely create tooltip content without using .html() to prevent XSS
+            tooltip.selectAll("*").remove();
+            
+            const content = tooltip.append("div");
+            content.append("strong").text(d.experiment);
+            content.append("br");
+            content.append("text").text(`Score: ${d.score}`);
+            content.append("br");
+            content.append("text").text(`Condition: ${d.condition}`);
+            content.append("br");
+            content.append("text").text(`Perturbation: ${d.perturbation}`);
+            
+            tooltip.style("visibility", "visible");
         })
         .on("mousemove", function(event) {
             tooltip.style("top", (event.pageY - 10) + "px").style("left", (event.pageX + 10) + "px");

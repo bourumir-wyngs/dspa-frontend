@@ -171,7 +171,7 @@ const ExperimentInfo = () => {
                                         <a
                                             href={`/visualize/${protein.proteinAccession || protein.pg_protein_accessions}`}
                                             target="_blank"
-                                            rel="noreferrer"
+                                            rel="noopener noreferrer"
                                         >
                                             {protein.proteinAccession || protein.pg_protein_accessions}
                                         </a>

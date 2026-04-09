@@ -49,7 +49,7 @@ const getHeatmapTooltip = (d) => {
 
     return `
         <div class="tooltip-container">
-            Experiment: <a href="/experiment/${d.yValue}" target="_blank" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
+            Experiment: <a href="/experiment/${d.yValue}" target="_blank" rel="noopener noreferrer" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
             Condition: <strong class="tooltip-highlight">${d.condition || "N/A"}</strong><br />
             LiP Score: <strong>${d.score.toFixed(2)}</strong>
         </div>`;
@@ -390,7 +390,8 @@ const NightingaleComponent = ({
           }
         
         const updateTooltip = (content, x, y) => {
-            tooltip.innerHTML = content;
+            // Safely set text content to prevent XSS
+            tooltip.textContent = content;
             tooltip.style.top = `${y + 10}px`;
             tooltip.style.left = `${x + 10}px`;
             tooltip.style.visibility = "visible";

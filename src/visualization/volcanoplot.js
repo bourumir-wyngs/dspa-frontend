@@ -260,13 +260,22 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           highlightOthers(d.pep_grouping_key, true);
         
           const tooltip = d3.select("#html-tooltip");
+          // Safely set text content to prevent XSS
           tooltip
             .style("visibility", "visible")
             .style("opacity", 1)
-            .html(`
-              <strong>Pep Key:</strong> ${d.pep_grouping_key}<br/>
-              <strong>Protein:</strong> ${d.pg_protein_accessions}
-            `)
+            .selectAll("*").remove();
+          
+          const content = tooltip.append("div");
+          const pepKeySpan = content.append("span");
+          pepKeySpan.append("strong").text("Pep Key: ");
+          pepKeySpan.append("span").text(d.pep_grouping_key);
+          
+          content.append("br");
+          
+          const proteinSpan = content.append("span");
+          proteinSpan.append("strong").text("Protein: ");
+          proteinSpan.append("span").text(d.pg_protein_accessions);
             ;
         })
         

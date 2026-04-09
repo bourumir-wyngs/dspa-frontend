@@ -5,9 +5,10 @@ import ProteinVisualization from '../../components/ProteinView';
 
 // Mock react-router-dom
 const mockedUseNavigate = jest.fn();
+let mockProteinName = 'P12345';
 jest.mock('react-router-dom', () => ({
   useNavigate: () => mockedUseNavigate,
-  useParams: () => ({ proteinName: 'P12345' }),
+  useParams: () => ({ proteinName: mockProteinName }),
   MemoryRouter: ({ children }) => <div>{children}</div>,
   Routes: ({ children }) => <div>{children}</div>,
   Route: ({ element }) => <div>{element}</div>
@@ -142,5 +143,67 @@ describe('ProteinVisualization', () => {
     expect(screen.getByTestId('nightingale-component')).toBeInTheDocument();
     expect(screen.getByText('Selected PDB: AF-P12345-F1')).toBeInTheDocument();
     expect(screen.getByText('PDB count: 1')).toBeInTheDocument();
+  });
+
+  it('renders nothing when proteinName is absent in proteinData', async () => {
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({
+        proteinData: {
+          description: 'No name protein'
+        }
+      })
+    });
+    fetch.mockResolvedValueOnce({
+      ok: true,
+      json: async () => ({ uniProtKBCrossReferences: [] })
+    });
+
+    renderComponent();
+
+    await waitFor(() => {
+      expect(screen.queryByText('Loading...')).not.toBeInTheDocument();
+    });
+
+    expect(screen.queryByText(/UniProt ID/)).not.toBeInTheDocument();
+    expect(screen.queryByTestId('nightingale-component')).not.toBeInTheDocument();
+  });
+
+  it('refetches data when proteinName parameter changes', async () => {
+    mockProteinName = 'P11111';
+
+    const mockFetch = jest.fn((url) => {
+      if (url.includes('P11111')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ proteinData: { proteinName: 'P11111' } })
+        });
+      }
+      if (url.includes('P22222')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ proteinData: { proteinName: 'P22222' } })
+        });
+      }
+      return Promise.resolve({ ok: true, json: async () => ({}) });
+    });
+    global.fetch = mockFetch;
+
+    const { rerender } = render(<ProteinVisualization />);
+    
+    await waitFor(() => {
+      expect(screen.getByText('UniProt ID P11111')).toBeInTheDocument();
+    });
+
+    // Change param
+    mockProteinName = 'P22222';
+    rerender(<ProteinVisualization />);
+
+    await waitFor(() => {
+      expect(screen.getByText('UniProt ID P22222')).toBeInTheDocument();
+    });
+    
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('P11111'));
+    expect(mockFetch).toHaveBeenCalledWith(expect.stringContaining('P22222'));
   });
 });

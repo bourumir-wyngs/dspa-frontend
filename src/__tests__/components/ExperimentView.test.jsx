@@ -9,7 +9,7 @@ jest.mock('react-router-dom', () => ({
 }), { virtual: true });
 
 jest.mock('../../visualization/volcanoplot.js', () => (props) => (
-  <div data-testid="volcano-plot">{props.differentialAbundanceDataList.length}</div>
+  <div data-testid="volcano-plot">{(props.differentialAbundanceDataList || []).length}</div>
 ));
 
 import ExperimentView from '../../components/ExperimentView';
@@ -252,5 +252,188 @@ describe('ExperimentView', () => {
     createElementSpy.mockRestore();
     window.URL.createObjectURL = originalCreateObjectURL;
     window.URL.revokeObjectURL = originalRevokeObjectURL;
+  });
+
+  it('uses proteinScores when significantProteins is absent', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            experimentData: {
+              experimentID: 'DYN-1',
+              metaData: {},
+              proteinScores: [
+                {
+                  proteinAccession: 'P99999',
+                  protein_description: 'Fallback protein',
+                  maxLog2FC: 4.5,
+                  n_peptides: 10,
+                  comparison: 'test-comp',
+                }
+              ],
+            },
+          }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+    await settleEffects();
+
+    expect(container.textContent).toContain('P99999');
+    expect(container.textContent).toContain('Fallback protein');
+  });
+
+  it('handles missing QC PDF data safely', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('includeQcPdf=true')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ experimentData: { metaData: {} } }), // No pdf file
+        });
+      }
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ experimentData: { experimentID: 'DYN-1', metaData: {} } }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+    await settleEffects();
+
+    const downloadButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Download QC Data as PDF'
+    );
+
+    await act(async () => {
+      Simulate.click(downloadButton);
+    });
+    await settleEffects();
+
+    expect(consoleSpy).toHaveBeenCalledWith('No QC PDF file available');
+    consoleSpy.mockRestore();
+  });
+
+  it('uses cached PDF and avoids refetch on second download', async () => {
+    let fetchCount = 0;
+    global.fetch = jest.fn((url) => {
+      if (url.includes('includeQcPdf=true')) {
+        fetchCount++;
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            experimentData: { metaData: { qc_pdf_file: { data: [1, 2, 3] } } },
+          }),
+        });
+      }
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ experimentData: { experimentID: 'DYN-1', metaData: {} } }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    const originalCreateObjectURL = window.URL.createObjectURL;
+    window.URL.createObjectURL = jest.fn(() => 'blob:qc-pdf');
+    window.URL.revokeObjectURL = jest.fn();
+
+    const originalAnchorClick = HTMLAnchorElement.prototype.click;
+    HTMLAnchorElement.prototype.click = jest.fn();
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+    await settleEffects();
+
+    const downloadButton = Array.from(container.querySelectorAll('button')).find(
+      (button) => button.textContent === 'Download QC Data as PDF'
+    );
+
+    // First click
+    await act(async () => { Simulate.click(downloadButton); });
+    await settleEffects();
+
+    // Second click
+    await act(async () => { Simulate.click(downloadButton); });
+    await settleEffects();
+
+    expect(fetchCount).toBe(1); // Should only fetch once
+
+    window.URL.createObjectURL = originalCreateObjectURL;
+    HTMLAnchorElement.prototype.click = originalAnchorClick;
+  });
+
+  it('handles experiment fetch failure safely without crashing', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: false,
+          status: 500
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => {});
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+    await settleEffects();
+
+    expect(consoleSpy).toHaveBeenCalledWith("Error fetching data: ", expect.any(Error));
+    // Component should still render its empty state or at least not crash
+    expect(container).toBeDefined();
+
+    consoleSpy.mockRestore();
+  });
+
+  it('renders metadata fallbacks for missing fields', async () => {
+    global.fetch = jest.fn((url) => {
+      if (url.includes('experiment?experimentID=DYN-1')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            experimentData: {
+              experimentID: 'DYN-1',
+              // No perturbation
+              metaData: {
+                // Completely empty metadata
+              },
+            },
+          }),
+        });
+      }
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+    await settleEffects();
+
+    expect(container.textContent).toContain('Perturbation: N/A');
+    expect(container.textContent).toContain('Condition: N/A');
+    expect(container.textContent).toContain('Taxonomy ID: N/A');
+    expect(container.textContent).toContain('Strain: N/A');
+    expect(container.textContent).toContain('Publication: N/A');
+    expect(container.textContent).toContain('Instrument: N/A');
+    expect(container.textContent).toContain('Experiment: N/A');
+    expect(container.textContent).toContain('Digestion Protocol: N/A');
+    expect(container.textContent).toContain('Protease: N/A');
+    expect(container.textContent).toContain('Digestion Time (Sec): N/A');
   });
 });

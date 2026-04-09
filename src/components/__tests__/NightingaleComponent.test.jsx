@@ -35,7 +35,7 @@ jest.mock('@nightingale-elements/nightingale-manager', () => ({}));
 jest.mock('@nightingale-elements/nightingale-colored-sequence', () => ({}));
 jest.mock('@nightingale-elements/nightingale-sequence-heatmap', () => ({}));
 jest.mock('@nightingale-elements/nightingale-msa', () => ({}));
-jest.mock('@dspa-nightingale/nightingale-track', () => ({}));
+jest.mock('@dspa-nightingale/nightingale-track', () => ({}), { virtual: true });
 jest.mock('@dspa-nightingale/nightingale-structure', () => {
     return {
         LIP_SCALE: [
@@ -45,7 +45,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
             { threshold: -Infinity, color: 'grey', label: 'No data' }
         ]
     };
-});
+}, { virtual: true });
 
 import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';

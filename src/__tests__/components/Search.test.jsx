@@ -146,4 +146,37 @@ describe('ProteinSearch Component', () => {
       expect(screen.getByTestId('mock-search-results')).toHaveTextContent('Results: 3');
     });
   });
+
+  it('initializes from location.state.searchResults immediately', async () => {
+    mockLocationState = {
+      searchResults: {
+        success: true,
+        table: [{ proteinName: 'CACHED1' }]
+      }
+    };
+
+    render(<ProteinSearch />);
+
+    // Should render the initialSearchResults immediately without needing a fetch
+    expect(screen.getByTestId('mock-search-results')).toHaveTextContent('Results: 1');
+  });
+
+  it('renders empty result message when search returns zero results', async () => {
+    global.fetch.mockResolvedValueOnce({
+      json: async () => ({
+        success: true,
+        table: []
+      })
+    });
+
+    render(<ProteinSearch />);
+
+    const input = screen.getByRole('textbox');
+    fireEvent.change(input, { target: { value: 'UNKNOWN' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+
+    await waitFor(() => {
+      expect(screen.getByTestId('mock-search-results')).toHaveTextContent('Results: 0');
+    });
+  });
 });

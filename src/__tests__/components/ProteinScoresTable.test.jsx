@@ -102,4 +102,56 @@ describe('ProteinScoresTable', () => {
 
     expect(screen.getAllByRole('row')).toHaveLength(1);
   });
+
+  it('handles duplicate scores correctly', () => {
+    const dataWithDuplicates = [
+      { proteinAccession: 'A-acc', averageScore: 50, protein_description: 'A-desc' },
+      { proteinAccession: 'B-acc', averageScore: 50, protein_description: 'B-desc' },
+    ];
+    render(
+      <ProteinScoresTable
+        experimentData={dataWithDuplicates}
+        onProteinClick={jest.fn()}
+        displayedProtein={null}
+        goTerms={[]}
+        onGoTermSelect={jest.fn()}
+      />
+    );
+    const rows = screen.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    // Should still render both
+    expect(screen.getByText('A-acc')).toBeInTheDocument();
+    expect(screen.getByText('B-acc')).toBeInTheDocument();
+  });
+
+  it('does not mark any row as selected if displayedProtein is absent from dataset', () => {
+    const { container } = render(
+      <ProteinScoresTable
+        experimentData={baseData}
+        onProteinClick={jest.fn()}
+        displayedProtein="UNKNOWN"
+        goTerms={[]}
+        onGoTermSelect={jest.fn()}
+      />
+    );
+    const selectedRow = container.querySelector('tr.protein-row.selected');
+    expect(selectedRow).toBeNull();
+  });
+
+  it('renders safely when protein_description is missing', () => {
+    render(
+      <ProteinScoresTable
+        experimentData={[{ proteinAccession: 'P1', averageScore: 10 }]}
+        onProteinClick={jest.fn()}
+        displayedProtein={null}
+        goTerms={[]}
+        onGoTermSelect={jest.fn()}
+      />
+    );
+    const rows = screen.getAllByRole('row');
+    expect(rows[1]).toHaveTextContent('P1');
+    // The description cell should be empty but the row should render
+    const cells = rows[1].querySelectorAll('td');
+    expect(cells[2].textContent).toBe('');
+  });
 });
