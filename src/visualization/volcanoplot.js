@@ -13,7 +13,7 @@ const CUTOFF_LOG2FC = 1;
 const COLOR_CUTOFF_LINE = '#7f7f7f';
 
 // Hover / selection color for peptides
-const COLOR_SELECTED_PEPTIDE = 'rgba(54,204,0,0.69)';
+const COLOR_SELECTED_PEPTIDE = '#289b22';
 
 const COLOR_TOOLTIP_BG = 'white';
 const COLOR_TOOLTIP_BORDER = 'black';
