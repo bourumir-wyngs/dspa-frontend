@@ -18,9 +18,6 @@ const COLOR_SELECTED_PEPTIDE = '#289b22';
 const COLOR_TOOLTIP_BG = 'white';
 const COLOR_TOOLTIP_BORDER = 'black';
 
-
-
-
 function cssSafeKey(key) {
   return key.replace(/[^\w-]/g, '_');
 }
