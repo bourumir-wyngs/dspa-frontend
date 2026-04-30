@@ -12,6 +12,10 @@ jest.mock('../../visualization/volcanoplot.js', () => (props) => (
   <div data-testid="volcano-plot">{(props.differentialAbundanceDataList || []).length}</div>
 ));
 
+jest.mock('../../visualization/GOEnrichmentVisualization.js', () => (props) => (
+  <div data-testid="go-enrichment-plot">{(props.goEnrichmentData || []).length}</div>
+));
+
 import ExperimentView from '../../components/ExperimentView';
 
 const flushPromises = async () => {
@@ -65,6 +69,9 @@ describe('ExperimentView', () => {
               differentialAbundanceDataList: [
                 { protein: 'P11111', log2fc: 2.1 },
                 { protein: 'P22222', log2fc: -1.4 },
+              ],
+              goEnrichmentData: [
+                { dpx_comparison: 'DYN-1-A', go_term: 'stress response', adj_pval: 0.01 },
               ],
               metaData: {
                 condition: 'Stress',
@@ -127,6 +134,8 @@ describe('ExperimentView', () => {
     expect(container.textContent).toContain('Instrument: Orbitrap');
     expect(container.textContent).toContain('Volcano Plots per comparison');
     expect(container.querySelector('[data-testid="volcano-plot"]').textContent).toBe('2');
+    expect(container.textContent).toContain('Gene Ontology Enrichment Analysis');
+    expect(container.querySelector('[data-testid="go-enrichment-plot"]').textContent).toBe('1');
     expect(container.textContent).toContain('Significant Proteins across Comparisons');
     expect(container.textContent).toContain('P11111');
     expect(container.textContent).toContain('Heat shock protein');

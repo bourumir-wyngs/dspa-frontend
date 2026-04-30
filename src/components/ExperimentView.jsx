@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import config from '../config.json';
 import VolcanoPlot from '../visualization/volcanoplot.js';
+import GOEnrichmentVisualization from '../visualization/GOEnrichmentVisualization.js';
 
 const SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS = {
     accession: 'Protein accession identifier from the UniProt proteome entries matched in DSPA.',
@@ -17,6 +18,7 @@ const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
     const [experimentData, setExperimentData] = useState([]);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
+    const [goEnrichmentData, setGoEnrichmentData] = useState([]);
     const [qcPdfData, setQcPdfData] = useState(null);
     const [showAllSignificantProteins, setShowAllSignificantProteins] = useState(false);
 
@@ -30,6 +32,7 @@ const ExperimentInfo = () => {
           const data = await response.json();
           setExperimentData(data.experimentData);
           setDifferentialAbundanceData(data.experimentData.differentialAbundanceDataList);
+          setGoEnrichmentData(data.experimentData.goEnrichmentData || []);
         } catch (error) {
           console.error("Error fetching data: ", error);
         }
@@ -148,6 +151,14 @@ const ExperimentInfo = () => {
                     <div className="experiment-volcano-plots-wrapper">
                         <VolcanoPlot
                             differentialAbundanceDataList={differentialAbundanceData}
+                        />
+                    </div>
+                    </div>
+                <div className="protein-view-section">
+                <h2  className="centered-heading" > Gene Ontology Enrichment Analysis</h2><br />
+                    <div>
+                        <GOEnrichmentVisualization
+                            goEnrichmentData={goEnrichmentData}
                         />
                     </div>
                     </div>
