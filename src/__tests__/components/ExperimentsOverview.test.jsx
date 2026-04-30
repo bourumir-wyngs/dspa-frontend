@@ -113,6 +113,10 @@ describe('ExperimentsOverview', () => {
     expect(container.textContent).toContain('N/A');
     expect(container.querySelector('[data-testid="Filter by perturbation..."]')).not.toBeNull();
     expect(container.querySelector('[data-testid="Filter by organism..."]')).not.toBeNull();
+    expect(container.querySelector('[data-testid="Filter by protease..."]')).toBeNull();
+    expect(container.textContent).not.toContain('Protease');
+    expect(container.textContent).not.toContain('Trypsin');
+    expect(container.textContent).not.toContain('LysC');
   });
 
   it('filters the table and navigates when an experiment row is clicked', async () => {
@@ -161,7 +165,7 @@ describe('ExperimentsOverview', () => {
 
     clickFilterOption('Filter by perturbation...', 'Heat');
     clickFilterOption('Filter by organism...', 'Human');
-    clickFilterOption('Filter by protease...', 'Trypsin');
+    clickFilterOption('Filter by condition...', 'Stress');
 
     expect(container.textContent).toContain('DYN-1');
     expect(container.textContent).not.toContain('DYN-2');
@@ -194,7 +198,7 @@ describe('ExperimentsOverview', () => {
     expect(container.textContent).toContain('DYN-3');
   });
 
-  it('renders N/A for missing condition, protease, and doi values', async () => {
+  it('renders N/A for missing condition and doi values', async () => {
     await act(async () => {
       root.render(<ExperimentsOverview />);
     });
@@ -206,7 +210,7 @@ describe('ExperimentsOverview', () => {
 
     expect(dyn3Row).toHaveTextContent('Human');
     expect(dyn3Row).toHaveTextContent('Heat');
-    expect(dyn3Row.textContent.match(/N\/A/g)?.length).toBeGreaterThanOrEqual(3);
+    expect(dyn3Row.textContent.match(/N\/A/g)?.length).toBeGreaterThanOrEqual(2);
   });
 
   it('handles backend response with success: false', async () => {

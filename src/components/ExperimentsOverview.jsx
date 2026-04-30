@@ -10,12 +10,10 @@ const ExperimentOverview = () => {
   
   const [perturbationOptions, setPerturbationOptions] = useState([]);
   const [conditionOptions, setConditionOptions] = useState([]);
-  const [proteaseOptions, setProteaseOptions] = useState([]);
   const [organismOptions, setOrganismOptions] = useState([]);
   
   const [selectedPerturbation, setSelectedPerturbation] = useState([]);
   const [selectedCondition, setSelectedCondition] = useState([]);
-  const [selectedProtease, setSelectedProtease] = useState([]);
   const [selectedOrganisms, setSelectedOrganisms] = useState([]);
  
   const navigate = useNavigate();
@@ -30,12 +28,10 @@ const ExperimentOverview = () => {
 
           const uniquePerturbations = [...new Set(data.experiments.map(exp => exp.perturbation).filter(perturbation => perturbation))];
           const uniqueCondition = [...new Set(data.experiments.map(exp => exp.condition).filter(condition => condition))];
-          const uniqueProtease= [...new Set(data.experiments.map(exp => exp.protease).filter(protease => protease))];
           const uniqueOrganisms = [...new Set(data.experiments.map(exp => exp.organism).filter(organism => organism))];
           
           setPerturbationOptions(uniquePerturbations.map(perturbation => ({ value: perturbation, label: perturbation })));
           setConditionOptions(uniqueCondition.map(condition => ({ value: condition, label: condition })));
-          setProteaseOptions(uniqueProtease.map(protease => ({ value: protease, label: protease })));
           setOrganismOptions(uniqueOrganisms.map(organism => ({ value: organism, label: organism })));
 
         } else {
@@ -52,36 +48,29 @@ const ExperimentOverview = () => {
   
   const handlePerturbationFilterChange = (selectedOptions) => {
     setSelectedPerturbation(selectedOptions || []);
-    applyFilters(selectedOptions || [], selectedCondition, selectedProtease, selectedOrganisms);
+    applyFilters(selectedOptions || [], selectedCondition, selectedOrganisms);
   };
   
   const handleConditionFilterChange = (selectedOptions) => {
     setSelectedCondition(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedOptions || [], selectedProtease, selectedOrganisms);
-  };
-  
-  const handleProteaseFilterChange = (selectedOptions) => {
-    setSelectedProtease(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedCondition, selectedOptions || [], selectedOrganisms);
+    applyFilters(selectedPerturbation, selectedOptions || [], selectedOrganisms);
   };
 
   const handleOrganismFilterChange = (selectedOptions) => {
     setSelectedOrganisms(selectedOptions || []);
-    applyFilters(selectedPerturbation, selectedCondition, selectedProtease, selectedOptions || []);
+    applyFilters(selectedPerturbation, selectedCondition, selectedOptions || []);
   };
   
-  const applyFilters = (selectedPerturbation, selectedCondition, selectedProtease, selectedOrganisms) => {
+  const applyFilters = (selectedPerturbation, selectedCondition, selectedOrganisms) => {
     // Extract selected values or default to empty array
     const selectedPerturbationValues = (selectedPerturbation || []).map(option => option.value);
     const selectedConditionValues = (selectedCondition || []).map(option => option.value);
-    const selectedProteaseValues = (selectedProtease || []).map(option => option.value);
     const selectedOrganismValues = (selectedOrganisms || []).map(option => option.value);
   
     // Filter experiments based on selected values
     const filtered = experiments.filter(experiment =>
       (selectedPerturbationValues.length === 0 || selectedPerturbationValues.includes(experiment.perturbation)) &&
       (selectedConditionValues.length === 0 || selectedConditionValues.includes(experiment.condition)) &&
-      (selectedProteaseValues.length === 0 || selectedProteaseValues.includes(experiment.protease)) &&
       (selectedOrganismValues.length === 0 || selectedOrganismValues.includes(experiment.organism))
     );
   
@@ -132,18 +121,6 @@ const ExperimentOverview = () => {
             />
           </th>
 
-          <th>
-            Protease
-            <Select
-              isMulti
-              options={proteaseOptions}
-              value={selectedProtease}
-              onChange={handleProteaseFilterChange}
-              placeholder="Filter by protease..."
-              className="filter-select"
-            />
-          </th>
-
           <th>DOI</th>
         </tr>
       </thead>
@@ -154,7 +131,6 @@ const ExperimentOverview = () => {
           <td>{experiment.organism || 'N/A'}</td>
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
-          <td>{experiment.protease || 'N/A'}</td>
           <td>
             {experiment.doi ? <a href={experiment.doi}>{experiment.doi}</a>: 'N/A'}
           </td>
