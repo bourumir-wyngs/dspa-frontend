@@ -1,7 +1,6 @@
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent from '../../components/NightingaleComponent';
 
 jest.mock('@nightingale-elements/nightingale-sequence', () => ({}), { virtual: true });
 jest.mock('@nightingale-elements/nightingale-navigation', () => ({}), { virtual: true });
@@ -18,6 +17,8 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
   };
 }, { virtual: true });
 jest.mock('@dspa-nightingale/nightingale-track', () => ({}), { virtual: true });
+
+const NightingaleComponent = require('../../components/NightingaleComponent').default;
 
 describe('NightingaleComponent', () => {
   const baseProteinData = {
