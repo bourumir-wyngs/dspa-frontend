@@ -298,7 +298,7 @@ const Condition = () => {
 
             <div className="condition-section condition-protein-experiment-wrapper">
                 <div className="condition-table-container">
-                    <h2>Top proteins</h2>
+                    <h2>Significant Proteins across Condition Comparisons</h2>
                     <ProteinScoresTable
                         experimentData={filteredExperimentData}
                         onProteinClick={handleProteinClick}

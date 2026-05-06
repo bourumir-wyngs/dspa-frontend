@@ -149,7 +149,7 @@ describe('ConditionView', () => {
 
     expect(await screen.findByText(/Condition - Heat shock/i)).toBeInTheDocument();
 
-    expect(screen.getByText(/Top proteins/i)).toBeInTheDocument();
+    expect(screen.getByText(/Significant Proteins across Condition Comparisons/i)).toBeInTheDocument();
     expect(screen.getByTestId('protein-scores-table')).toHaveTextContent('P11111');
     const volcano = await screen.findByTestId('volcano-plot');
     expect(volcano).toHaveTextContent('P11111');
@@ -431,7 +431,7 @@ describe('ConditionView', () => {
       });
 
       render(<Condition />);
-      await screen.findByText(/Top proteins/i);
+      await screen.findByText(/Significant Proteins across Condition Comparisons/i);
       expect(screen.queryByText(/Dose-Response-Data for Peptides/i)).not.toBeInTheDocument();
     });
 
@@ -459,7 +459,7 @@ describe('ConditionView', () => {
       });
 
       render(<Condition />);
-      expect(await screen.findByText(/Top proteins/i)).toBeInTheDocument();
+      expect(await screen.findByText(/Significant Proteins across Condition Comparisons/i)).toBeInTheDocument();
       // Should not show dose response or nightingale
       expect(screen.queryByTestId('nightingale-component')).not.toBeInTheDocument();
     });

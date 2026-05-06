@@ -101,7 +101,7 @@ const ExperimentInfo = () => {
                         <div className="metadata-section">
                             <h2>General Information</h2>
                             <div className="metadata-field">
-                                <strong>Perturbation:</strong> {experimentData.perturbation || 'N/A'}
+                                <strong>Perturbation:</strong> {experimentData.perturbation || experimentData.metaData?.perturbation || 'N/A'}
                             </div>
                             <div className="metadata-field">
                                 <strong>Condition:</strong> {experimentData.metaData.condition || 'N/A'}
