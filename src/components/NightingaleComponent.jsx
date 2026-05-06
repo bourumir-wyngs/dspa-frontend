@@ -13,17 +13,23 @@ import "@dspa-nightingale/nightingale-track";
 
 
 // Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
-// Each entry defines a threshold (score > threshold → use this color) checked top-down.
-// The last entry (threshold -Infinity) is the fallback for score ≤ 0 / no data.
+// Each finite entry defines a threshold (score >= threshold → use this color) checked top-down.
+// Null / non-finite scores represent no coverage and use the dedicated no-coverage color.
 
 /**
  * Returns the color string for a given LiP score, using the shared LIP_COLOR_SCALE.
  */
 function getLipScoreColor(score) {
+    const noCoverageColor = LIP_COLOR_SCALE[LIP_COLOR_SCALE.length - 1].color;
+
+    if (score == null || !Number.isFinite(score)) {
+        return noCoverageColor;
+    }
+
     for (const entry of LIP_COLOR_SCALE) {
         if (score >= entry.threshold) return entry.color;
     }
-    return LIP_COLOR_SCALE[LIP_COLOR_SCALE.length - 1].color;
+    return noCoverageColor;
 }
 
 const defaultAttributes = {
@@ -39,7 +45,15 @@ const defaultAttributes = {
 };
 
 const getHeatmapTooltip = (d) => {
-    if (d.score === 0 || isNaN(d.score)) {
+    if (d.missingCoverageDataset) {
+        return `
+            <div class="tooltip-container">
+               <strong>This sequence position is not present in the coverage dataset</strong>
+            </div>
+            `;
+    }
+
+    if (d.score == null || !Number.isFinite(d.score)) {
         return `
             <div class="tooltip-container">
                <strong>no coverage</strong>
@@ -70,7 +84,7 @@ const buildHeatmapRows = (differentialAbundanceData, experimentMetaData = []) =>
             cells: values.map(value => ({
                 yValue: key,
                 xValue: value.index + 1,
-                score: value.score === null ? 0 : value.score,
+                score: value.score == null ? null : value.score,
                 condition: metaData ? metaData.condition : "N/A",
             })),
         };
@@ -80,9 +94,73 @@ const buildHeatmapRows = (differentialAbundanceData, experimentMetaData = []) =>
 const createHeatmapDataset = (rows, sequenceLength) => ({
     xDomain: Array.from({ length: sequenceLength }, (_, index) => index + 1),
     yDomain: rows.map(({ yValue }) => yValue),
-    dataHeatmap: rows.flatMap(({ cells }) => cells),
+    dataHeatmap: rows.flatMap((row) => {
+        const cellsByPosition = new Map(row.cells.map((cell) => [cell.xValue, cell]));
+
+        return Array.from({ length: sequenceLength }, (_, index) => {
+            const xValue = index + 1;
+            const cell = cellsByPosition.get(xValue);
+
+            if (cell) {
+                return cell;
+            }
+
+            return {
+                xValue,
+                yValue: row.yValue,
+                score: null,
+                condition: row.condition,
+                missingCoverageDataset: true,
+            };
+        });
+    }),
 });
 
+
+const TOOLTIP_VIEWPORT_MARGIN = 12;
+
+const clampHeatmapTooltipsToViewport = (heatmapElement) => {
+    const root = heatmapElement?.shadowRoot;
+    if (!root || typeof window === 'undefined') {
+        return;
+    }
+
+    root.querySelectorAll('.heatmap-tooltip-box, .heatmap-pinned-tooltip-box').forEach((tooltip) => {
+        const rect = tooltip.getBoundingClientRect();
+        if (!rect.width && !rect.height) {
+            return;
+        }
+
+        let left = parseFloat(tooltip.style.left || '0');
+        if (!Number.isFinite(left)) {
+            left = 0;
+        }
+
+        const rightOverflow = rect.right - (window.innerWidth - TOOLTIP_VIEWPORT_MARGIN);
+        const leftOverflow = TOOLTIP_VIEWPORT_MARGIN - rect.left;
+
+        if (rightOverflow > 0) {
+            tooltip.style.left = `${Math.max(0, left - rightOverflow)}px`;
+        } else if (leftOverflow > 0) {
+            tooltip.style.left = `${left + leftOverflow}px`;
+        }
+    });
+};
+
+const attachHeatmapTooltipViewportGuard = (heatmapElement) => {
+    const root = heatmapElement?.shadowRoot;
+    if (!root || heatmapElement.__dspaTooltipViewportGuardAttached) {
+        return;
+    }
+
+    const clampAfterTooltipUpdate = () => {
+        requestAnimationFrame(() => clampHeatmapTooltipsToViewport(heatmapElement));
+    };
+
+    root.addEventListener('mousemove', clampAfterTooltipUpdate);
+    root.addEventListener('click', clampAfterTooltipUpdate);
+    heatmapElement.__dspaTooltipViewportGuardAttached = true;
+};
 const applyHeatmapDataset = (heatmapElement, dataset) => {
     if (
         !heatmapElement ||
@@ -101,6 +179,8 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
 
         heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
         heatmapElement.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
+        attachHeatmapTooltipViewportGuard(heatmapElement);
+        clampHeatmapTooltipsToViewport(heatmapElement);
 
         if (typeof heatmapElement.heatmapInstance.state?.emitResize === "function") {
             heatmapElement.heatmapInstance.state.emitResize();
@@ -216,7 +296,7 @@ const NightingaleComponent = ({
 
 
     const sequenceLength = proteinData.proteinSequence.length;
-    const defaultLipScoreString = JSON.stringify(Array(sequenceLength).fill(-1));
+    const defaultLipScoreString = JSON.stringify(Array(sequenceLength).fill(null));
     const [lipscoreString, setLipscoreString] = useState(defaultLipScoreString);
 
     const proteinName = proteinData.proteinName;
@@ -340,7 +420,7 @@ const NightingaleComponent = ({
 
         const lipScoreArray = getLipScoreDataByExperimentID(experimentID);
         setSelectedExperiment(experimentID);
-        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(-1)));
+        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(null)));
     };
 
     useEffect(() => {
@@ -356,7 +436,7 @@ const NightingaleComponent = ({
         const lipScoreArray = getLipScoreDataByExperimentID(nextExperimentId);
 
         setSelectedExperiment(nextExperimentId);
-        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(-1)));
+        setLipscoreString(JSON.stringify(lipScoreArray || Array(sequenceLength).fill(null)));
     }, [
         defaultLipScoreString,
         experimentIDsList,

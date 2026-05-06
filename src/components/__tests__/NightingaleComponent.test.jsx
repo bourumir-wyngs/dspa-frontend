@@ -61,7 +61,7 @@ describe('NightingaleComponent Utilities', () => {
             expect(getLipScoreColor(5)).toBe('orange');
             expect(getLipScoreColor(2)).toBe('yellow');
             expect(getLipScoreColor(0)).toBe('yellow');
-            expect(getLipScoreColor(-1)).toBe('grey');
+            expect(getLipScoreColor(null)).toBe('grey');
         });
     });
 
@@ -79,7 +79,7 @@ describe('NightingaleComponent Utilities', () => {
             
             expect(rows).toHaveLength(2);
             expect(rows[0].condition).toBe('CondA');
-            expect(rows[0].cells[1].score).toBe(0); // null converted to 0
+            expect(rows[0].cells[1].score).toBeNull(); // null preserved as no coverage
             
             // Missing metadata fallback
             expect(rows[1].condition).toBe('N/A');
@@ -102,16 +102,28 @@ describe('NightingaleComponent Utilities', () => {
             expect(dataset.xDomain[0]).toBe(1);
             expect(dataset.xDomain[9]).toBe(10);
             expect(dataset.yDomain).toEqual(['exp1']);
-            expect(dataset.dataHeatmap).toEqual([{ xValue: 1, yValue: 'exp1', score: 5 }]);
+            expect(dataset.dataHeatmap).toHaveLength(10);
+            expect(dataset.dataHeatmap[0]).toEqual({ xValue: 1, yValue: 'exp1', score: 5 });
+            expect(dataset.dataHeatmap[1]).toMatchObject({
+                xValue: 2,
+                yValue: 'exp1',
+                score: null,
+                missingCoverageDataset: true,
+            });
         });
     });
     describe('getHeatmapTooltip', () => {
-        it('handles zero or NaN scores', () => {
-            const result1 = getHeatmapTooltip({ score: 0 });
+        it('handles null or NaN scores', () => {
+            const result1 = getHeatmapTooltip({ score: null });
             expect(result1).toContain('no coverage');
             
             const result2 = getHeatmapTooltip({ score: NaN });
             expect(result2).toContain('no coverage');
+        });
+
+        it('distinguishes missing coverage dataset positions from null no-coverage positions', () => {
+            const result = getHeatmapTooltip({ missingCoverageDataset: true, score: null });
+            expect(result).toContain('This sequence position is not present in the coverage dataset');
         });
 
         it('formats valid score correctly', () => {
