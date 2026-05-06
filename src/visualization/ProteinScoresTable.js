@@ -1,4 +1,5 @@
 import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
 
 const getProteinAccession = (proteinData) => proteinData.proteinAccession || proteinData.pg_protein_accessions || '';
 
@@ -53,7 +54,7 @@ export const ProteinScoresTable = ({ experimentData, onProteinClick, displayedPr
                                 className={`protein-row ${displayedProtein === proteinAccession ? 'selected' : ''}`}
                                 onClick={() => onProteinClick(proteinAccession)}
                             >
-                                <td>{proteinAccession}</td>
+                                <td><Link to={`/visualize/${encodeURIComponent(proteinAccession)}`} onClick={(event) => event.stopPropagation()}>{proteinAccession}</Link></td>
                                 <td>{formatMaxLog2FC(proteinData)}</td>
                                 <td>{getSignificantPeptideCount(proteinData)}</td>
                                 <td>{proteinData.protein_description || 'N/A'}</td>
