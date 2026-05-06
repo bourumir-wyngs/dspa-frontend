@@ -183,7 +183,8 @@ describe('NightingaleComponent Rendering', () => {
         featuresData: {
             sequence: 'MVLSPADKTN',
             features: [
-                { type: 'DOMAIN', start: 1, end: 5, description: 'Test Domain' }
+                { type: 'DOMAIN', start: 1, end: 5, description: 'Test Domain' },
+                { type: 'BINDING', start: 6, end: 8, ligand: { name: 'ATP' } },
             ]
         },
         barcodeSequence: {}
@@ -194,11 +195,12 @@ describe('NightingaleComponent Rendering', () => {
             <NightingaleComponent 
                 proteinData={mockProteinData}
                 pdbIds={[]}
-                selectedPdbId={null}
+                selectedPdbId="1XYZ"
                 setSelectedPdbId={() => {}}
             />
         );
         expect(screen.getByText('Test Protein')).toBeInTheDocument();
+        expect(screen.getByText('Selected PDB ID: 1XYZ')).toBeInTheDocument();
     });
 
     it('splits heatmap when masterCondition is provided', () => {
@@ -314,6 +316,20 @@ describe('NightingaleComponent Rendering', () => {
             expect(button).toHaveClass('selected');
         });
 
+        it('falls back to proteinData.experimentIDsList when passedExperimentIDs do not match available entries', () => {
+            render(
+                <NightingaleComponent 
+                    proteinData={mockProteinData}
+                    passedExperimentIDs={['missing-exp']}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+            expect(screen.getByText('10uM')).toBeInTheDocument();
+            expect(screen.getByText('Experiment exp2')).toBeInTheDocument();
+        });
+
         it('falls back to available lipscoreList experiments if experimentIDsList is empty', () => {
             const data = {
                 ...mockProteinData,
@@ -395,6 +411,7 @@ describe('NightingaleComponent Rendering', () => {
                 />
             );
             expect(screen.getByText('Domain')).toBeInTheDocument();
+            expect(screen.getByText('Binding site')).toBeInTheDocument();
         });
 
         it('omits domain feature track if features do not exist', () => {
