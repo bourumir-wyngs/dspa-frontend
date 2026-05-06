@@ -8,22 +8,25 @@ describe('ProteinScoresTable', () => {
   const baseData = [
     {
       proteinAccession: 'P22222',
-      averageScore: 11.7,
+      maxLog2FC: 1.75,
+      n_peptides: 3,
       protein_description: 'Second protein',
     },
     {
       proteinAccession: 'P11111',
-      averageScore: 42.2,
+      maxLog2FC: -4.25,
+      n_peptides: 8,
       protein_description: 'Top protein',
     },
     {
-      proteinAccession: 'P33333',
-      averageScore: 0,
-      protein_description: 'Zero score protein',
+      pg_protein_accessions: 'P33333',
+      diff: 2.5,
+      n_peptides: 1,
+      protein_description: 'Fallback accession protein',
     },
   ];
 
-  it('renders headers and sorts proteins by descending average score', () => {
+  it('renders significant-protein headers and sorts proteins by absolute max log2FC', () => {
     render(
       <ProteinScoresTable
         experimentData={baseData}
@@ -35,28 +38,33 @@ describe('ProteinScoresTable', () => {
     );
 
     expect(screen.getByText('Protein Accession')).toBeInTheDocument();
-    expect(screen.getByText('Average LiP Score among Experiments')).toBeInTheDocument();
+    expect(screen.getByText('Max log2FC among Experiments')).toBeInTheDocument();
+    expect(screen.getByText('Number of Significant Peptides among Experiments')).toBeInTheDocument();
     expect(screen.getByText('Description')).toBeInTheDocument();
 
     const rows = screen.getAllByRole('row');
     expect(rows).toHaveLength(4);
     expect(rows[1]).toHaveTextContent('P11111');
-    expect(rows[2]).toHaveTextContent('P22222');
-    expect(rows[3]).toHaveTextContent('P33333');
+    expect(rows[1]).toHaveTextContent('-4.25');
+    expect(rows[1]).toHaveTextContent('8');
+    expect(rows[2]).toHaveTextContent('P33333');
+    expect(rows[2]).toHaveTextContent('2.50');
+    expect(rows[3]).toHaveTextContent('P22222');
+    expect(rows[3]).toHaveTextContent('1.75');
   });
 
-  it('rounds scores and falls back to 0 when averageScore is missing', () => {
+  it('falls back to diff when maxLog2FC is missing and displays N/A for missing values', () => {
     render(
       <ProteinScoresTable
         experimentData={[
           {
             proteinAccession: 'P99999',
-            averageScore: 12.6,
-            protein_description: 'Rounded protein',
+            diff: 12.678,
+            n_peptides: 4,
+            protein_description: 'Diff fallback protein',
           },
           {
             proteinAccession: 'P88888',
-            protein_description: 'Missing score protein',
           },
         ]}
         onProteinClick={jest.fn()}
@@ -66,8 +74,8 @@ describe('ProteinScoresTable', () => {
       />
     );
 
-    expect(screen.getByText('13')).toBeInTheDocument();
-    expect(screen.getByText('0')).toBeInTheDocument();
+    expect(screen.getByText('12.68')).toBeInTheDocument();
+    expect(screen.getAllByText('N/A').length).toBeGreaterThanOrEqual(2);
   });
 
   it('calls onProteinClick with the clicked accession and marks the displayed protein as selected', () => {
@@ -89,7 +97,7 @@ describe('ProteinScoresTable', () => {
     expect(onProteinClick).toHaveBeenCalledWith('P11111');
   });
 
-  it('renders an empty table body when no experiment data is provided', () => {
+  it('renders an empty-state row when no experiment data is provided', () => {
     render(
       <ProteinScoresTable
         experimentData={[]}
@@ -100,13 +108,14 @@ describe('ProteinScoresTable', () => {
       />
     );
 
-    expect(screen.getAllByRole('row')).toHaveLength(1);
+    expect(screen.getAllByRole('row')).toHaveLength(2);
+    expect(screen.getByText('No significant proteins found for this condition.')).toBeInTheDocument();
   });
 
-  it('handles duplicate scores correctly', () => {
+  it('renders duplicate accessions safely with unique row keys', () => {
     const dataWithDuplicates = [
-      { proteinAccession: 'A-acc', averageScore: 50, protein_description: 'A-desc' },
-      { proteinAccession: 'B-acc', averageScore: 50, protein_description: 'B-desc' },
+      { proteinAccession: 'A-acc', maxLog2FC: 5, n_peptides: 2, protein_description: 'A-desc' },
+      { proteinAccession: 'A-acc', maxLog2FC: 4, n_peptides: 1, protein_description: 'A-desc duplicate' },
     ];
     render(
       <ProteinScoresTable
@@ -119,9 +128,7 @@ describe('ProteinScoresTable', () => {
     );
     const rows = screen.getAllByRole('row');
     expect(rows).toHaveLength(3);
-    // Should still render both
-    expect(screen.getByText('A-acc')).toBeInTheDocument();
-    expect(screen.getByText('B-acc')).toBeInTheDocument();
+    expect(screen.getAllByText('A-acc')).toHaveLength(2);
   });
 
   it('does not mark any row as selected if displayedProtein is absent from dataset', () => {
@@ -141,7 +148,7 @@ describe('ProteinScoresTable', () => {
   it('renders safely when protein_description is missing', () => {
     render(
       <ProteinScoresTable
-        experimentData={[{ proteinAccession: 'P1', averageScore: 10 }]}
+        experimentData={[{ proteinAccession: 'P1', maxLog2FC: 10, n_peptides: 1 }]}
         onProteinClick={jest.fn()}
         displayedProtein={null}
         goTerms={[]}
@@ -150,8 +157,7 @@ describe('ProteinScoresTable', () => {
     );
     const rows = screen.getAllByRole('row');
     expect(rows[1]).toHaveTextContent('P1');
-    // The description cell should be empty but the row should render
     const cells = rows[1].querySelectorAll('td');
-    expect(cells[2].textContent).toBe('');
+    expect(cells[3].textContent).toBe('N/A');
   });
 });
