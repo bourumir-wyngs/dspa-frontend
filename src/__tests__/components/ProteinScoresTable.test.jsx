@@ -2,6 +2,13 @@ import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
 
+jest.mock('react-router-dom', () => {
+  const React = require('react');
+  return {
+    Link: ({ children, to, onClick }) => React.createElement('a', { href: to, onClick }, children),
+  };
+}, { virtual: true });
+
 import { ProteinScoresTable } from '../../visualization/ProteinScoresTable';
 
 describe('ProteinScoresTable', () => {
@@ -93,7 +100,7 @@ describe('ProteinScoresTable', () => {
     const selectedRow = container.querySelector('tr.protein-row.selected');
     expect(selectedRow).toHaveTextContent('P22222');
 
-    fireEvent.click(screen.getByText('P11111'));
+    fireEvent.click(screen.getByText('P11111').closest('tr'));
     expect(onProteinClick).toHaveBeenCalledWith('P11111');
   });
 
