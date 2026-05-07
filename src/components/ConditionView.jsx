@@ -4,7 +4,6 @@ import config from '../config.json';
 import NightingaleComponent from './NightingaleComponent.jsx';
 import "@nightingale-elements/nightingale-sequence";
 import VolcanoPlot from '../visualization/volcanoplot.js';
-import DoseResponseCurves from '../visualization/DoseResponse.js';
 import { ProteinScoresTable } from '../visualization/ProteinScoresTable.js';
 
 const getConditionOptionLabel = (conditionOption) => {
@@ -76,14 +75,11 @@ const Condition = () => {
     const [conditions, setConditions] = useState([]);
     const [loading, setLoading] = useState(false);
     const [differentialAbundanceData, setDifferentialAbundanceData] = useState([]);
-    const[ doseResponseExperiments, setDoseResponseExperiments] = useState([]);
     const [experimentIDs, setExperimentIDs] = useState([]);
     const [error, setError] = useState('');
     const [displayedProtein, setDisplayedProtein] = useState("");
     const [pdbIds, setPdbIds] = useState([]);
     const [selectedPdbId, setSelectedPdbId] = useState("");
-    const [doseResponseDataPlotCurve, setDoseResponseDataPlotCurve] = useState([]);
-    const [doseResponseDataPlotPoints, setDoseResponseDataPlotPoints] = useState([]);
     const [selectedExperiment, setSelectedExperiment] = useState("");
     const [allGoTerms, setAllGoTerms] = useState([]);
     const [filteredExperimentData, setFilteredExperimentData] = useState([]);
@@ -115,35 +111,6 @@ const Condition = () => {
         return await response.json();
     };
 
-    const fetchDoseResponseData = useCallback(async (dynaprotExperiments, proteinName, signal) => {
-        if (!proteinName || !Array.isArray(dynaprotExperiments) || dynaprotExperiments.length === 0) return;
-
-        try {
-            const fetchPromises = dynaprotExperiments.map(expID => {
-                const queryParams = `dynaprotExperiment=${encodeURIComponent(expID)}&proteinName=${encodeURIComponent(proteinName)}`;
-                const url = `${config.apiEndpoint}doseresponse?${queryParams}`;
-                return fetch(url, { signal }).then(res => {
-                    if (!res.ok) {
-                        throw new Error(`Failed for ${expID}: ${res.statusText}`);
-                    }
-                    return res.json();
-                });
-            });
-
-            const results = await Promise.all(fetchPromises);
-
-            const allCurves = results.flatMap(data => data.doseResponseDataPlotCurve || []);
-            const allPoints = results.flatMap(data => data.doseResponseDataPlotPoints || []);
-
-            setDoseResponseDataPlotCurve(allCurves);
-            setDoseResponseDataPlotPoints(allPoints);
-        } catch (error) {
-            if (isMounted.current) {
-                setError(`Error fetching protein data: ${error.message}`);
-                setDisplayedProteinData({});
-            }
-        }
-    }, []);
 
 
     const fetchProteinData = useCallback(async (proteinName, signal) => {
@@ -176,20 +143,12 @@ const Condition = () => {
             try {
                 const rawData = await fetchData(url, signal);
                 if (!abortController.signal.aborted) {
-                    const conditionData = rawData.conditionData;
                     setSelectedCondition(rawData.conditionData.condition);
                     setDifferentialAbundanceData(rawData.conditionData.differentialAbundanceDataList);
                     setExperimentIDs(rawData.conditionData.experimentIDsList);
                     setFilteredExperimentData(rawData.conditionData.proteinScoresTable);
                     setAllGoTerms(rawData.conditionData.goTerms);
                     setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);   
-                    setDoseResponseExperiments(conditionData.doseResponseExperiments);
-                    if (conditionData.doseResponseExperiments.length > 0 && conditionData.proteinScoresTable?.[0]?.proteinAccession) {
-                        await fetchDoseResponseData(
-                            conditionData.doseResponseExperiments,
-                            conditionData.proteinScoresTable[0].proteinAccession,
-                            signal
-                        ); }
             }
             } catch (error) {
                 if (!signal.aborted && isMounted.current) {
@@ -205,7 +164,7 @@ const Condition = () => {
         return () => {
             abortController.abort(); 
         };
-    }, [selectedCondition, fetchDoseResponseData])
+    }, [selectedCondition])
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -233,13 +192,6 @@ const Condition = () => {
         return () => { isMounted.current = false; };
     }, []);
 
-    useEffect(() => {
-        const abortController = new AbortController();
-        if (displayedProtein && doseResponseExperiments.length > 0) {
-            fetchDoseResponseData(doseResponseExperiments, displayedProtein, abortController.signal);
-        }
-        return () => abortController.abort();
-    }, [displayedProtein, doseResponseExperiments, fetchDoseResponseData]);
 
     useEffect(() => {
         const abortController = new AbortController();
@@ -326,14 +278,6 @@ const Condition = () => {
                 </div>
             </div>
 
-            {doseResponseDataPlotCurve && Object.keys(doseResponseDataPlotCurve).length > 0 && (
-                <div className="condition-section condition-dose-response-wrapper">
-                    <div className="condition-dose-response-container">
-                        <h2>Dose-Response-Data for Peptides in {displayedProtein}</h2>
-                        <DoseResponseCurves points={doseResponseDataPlotPoints} curves={doseResponseDataPlotCurve} />
-                    </div>
-                </div>
-            )}
         </div>
     );
 };
