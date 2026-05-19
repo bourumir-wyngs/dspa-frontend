@@ -48,9 +48,9 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 }, { virtual: true });
 
 import React from 'react';
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, relayHeatmapHighlightEvent } from '../NightingaleComponent';
+import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, relayHeatmapHighlightEvent } from '../NightingaleComponent';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -110,6 +110,60 @@ describe('NightingaleComponent Utilities', () => {
                 score: null,
                 missingCoverageDataset: true,
             });
+        });
+    });
+
+    describe('getSequencePositionForTrackEvent', () => {
+        const rect = (left, width) => ({
+            left,
+            width,
+            right: left + width,
+            top: 0,
+            bottom: 20,
+            height: 20,
+        });
+
+        it('uses the track xScale and rendered svg bounds when available', () => {
+            const track = document.createElement('nightingale-track');
+            const shadowRoot = track.attachShadow({ mode: 'open' });
+            const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+            svg.getBoundingClientRect = jest.fn(() => rect(100, 1200));
+            shadowRoot.appendChild(svg);
+
+            track.setAttribute('margin-left', '0');
+            track.setAttribute('margin-right', '0');
+            track.xScale = { invert: jest.fn((x) => (x / 10) + 1) };
+
+            const event = new MouseEvent('mousemove', { clientX: 350 });
+
+            expect(getSequencePositionForTrackEvent(event, track)).toBe(26);
+            expect(track.xScale.invert).toHaveBeenCalledWith(250);
+        });
+
+        it('falls back to display range and margins when xScale is unavailable', () => {
+            const track = document.createElement('nightingale-track');
+            track.getBoundingClientRect = jest.fn(() => rect(100, 1000));
+            track.setAttribute('length', '1000');
+            track.setAttribute('display-start', '101');
+            track.setAttribute('display-end', '200');
+            track.setAttribute('margin-left', '10');
+            track.setAttribute('margin-right', '10');
+
+            const event = new MouseEvent('mousemove', { clientX: 600 });
+
+            expect(getSequencePositionForTrackEvent(event, track)).toBe(151);
+        });
+
+        it('returns null outside the rendered sequence area', () => {
+            const track = document.createElement('nightingale-track');
+            track.getBoundingClientRect = jest.fn(() => rect(100, 1000));
+            track.setAttribute('display-start', '1');
+            track.setAttribute('display-end', '100');
+            track.setAttribute('margin-left', '10');
+            track.setAttribute('margin-right', '10');
+
+            expect(getSequencePositionForTrackEvent(new MouseEvent('mousemove', { clientX: 105 }), track)).toBeNull();
+            expect(getSequencePositionForTrackEvent(new MouseEvent('mousemove', { clientX: 1090 }), track)).toBeNull();
         });
     });
     describe('getHeatmapTooltip', () => {

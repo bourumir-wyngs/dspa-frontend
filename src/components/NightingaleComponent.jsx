@@ -116,6 +116,72 @@ const createHeatmapDataset = (rows, sequenceLength) => ({
     }),
 });
 
+const getFiniteNumber = (value, fallback = 0) => {
+    if (value == null || value === '') {
+        return fallback;
+    }
+
+    const numericValue = Number(value);
+    return Number.isFinite(numericValue) ? numericValue : fallback;
+};
+
+const getTrackNumericValue = (trackElement, name, fallback = 0) => {
+    const propertyValue = trackElement?.[name];
+    if (propertyValue != null && Number.isFinite(Number(propertyValue))) {
+        return Number(propertyValue);
+    }
+
+    return getFiniteNumber(trackElement?.getAttribute?.(name), fallback);
+};
+
+const getTrackSvgRect = (trackElement) => {
+    const svgElement = trackElement?.shadowRoot?.querySelector?.('svg')
+        || trackElement?.querySelector?.('svg');
+    const svgRect = svgElement?.getBoundingClientRect?.();
+
+    if (svgRect?.width) {
+        return svgRect;
+    }
+
+    return trackElement?.getBoundingClientRect?.();
+};
+
+const getSequencePositionForTrackEvent = (event, trackElement) => {
+    if (!trackElement || !Number.isFinite(event?.clientX)) {
+        return null;
+    }
+
+    const rect = getTrackSvgRect(trackElement);
+    if (!rect?.width) {
+        return null;
+    }
+
+    const marginLeft = getTrackNumericValue(trackElement, "margin-left", 0);
+    const marginRight = getTrackNumericValue(trackElement, "margin-right", 0);
+    const sequenceWidth = rect.width - marginLeft - marginRight;
+    const sequenceX = event.clientX - rect.left - marginLeft;
+
+    if (sequenceWidth <= 0 || sequenceX < 0 || sequenceX >= sequenceWidth) {
+        return null;
+    }
+
+    if (typeof trackElement.xScale?.invert === "function") {
+        const scaledPosition = Math.floor(trackElement.xScale.invert(sequenceX));
+        return Number.isFinite(scaledPosition) ? scaledPosition : null;
+    }
+
+    const length = getTrackNumericValue(trackElement, "length", 0);
+    const displayStart = getTrackNumericValue(trackElement, "display-start", 1);
+    const rawDisplayEnd = getTrackNumericValue(trackElement, "display-end", length);
+    const displayEnd = rawDisplayEnd > 0 ? rawDisplayEnd : length;
+
+    if (displayEnd < displayStart) {
+        return null;
+    }
+
+    return Math.floor(displayStart + (sequenceX / sequenceWidth) * (displayEnd + 1 - displayStart));
+};
+
 
 const TOOLTIP_VIEWPORT_MARGIN = 12;
 
@@ -531,14 +597,18 @@ const NightingaleComponent = ({
                     trackElement.data = trackFeatures;
 
                     const mouseMoveHandler = (event) => {
-                        const trackLength = trackElement.getAttribute("length");
-                        const relativeX = event.offsetX / trackElement.clientWidth;
-                        const position = Math.floor(relativeX * trackLength);
+                        const position = getSequencePositionForTrackEvent(event, trackElement);
+                        if (position == null) {
+                            hideTooltip();
+                            return;
+                        }
     
                         // Find the closest feature to this position
                         const feature = trackFeatures.find(f => f.start <= position && f.end >= position);
                         if (feature) {
                             updateTooltip(feature.tooltipContent, event.pageX, event.pageY);
+                        } else {
+                            hideTooltip();
                         }
                     };
 
@@ -1005,5 +1075,5 @@ const NightingaleComponent = ({
     );
 };
 export default NightingaleComponent;
-export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, relayHeatmapHighlightEvent };
+export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, relayHeatmapHighlightEvent };
     
