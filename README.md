@@ -16,6 +16,16 @@ In the wider DSPA workspace, `dspa-frontend` is the presentation layer that cons
 ## Technologies
 Built as a React 18 single-page application with React Router-based navigation and Create React App tooling, this frontend combines custom DSPA UI components with `react-select`-driven filtering and Nightingale web components for protein sequence/structure views. Data-rich charts such as volcano plots and dose-response curves are rendered with D3.js, while the application integrates both the internal DSPA backend API and the UniProt REST API for biological data and structure references.
 
+## E2E tests
+
+Playwright tests live in `e2e/` and run against `http://localhost:3000` by default. Start the frontend separately before running the e2e suite.
+
+- Install browser binaries once with `npx playwright install`.
+- Run the suite with `npm run e2e`.
+- Run interactively with `npm run e2e:ui`.
+
+Set `PLAYWRIGHT_BASE_URL` only if you intentionally need to point the browser at a different local frontend URL.
+
 ## Backend API used by the frontend
 
 The frontend talks primarily to the DSPA backend through the relative base path configured in `src/config.json`:
