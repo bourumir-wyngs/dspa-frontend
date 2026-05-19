@@ -25,3 +25,4 @@ yarn-error.log*
 /dspa-frontend/package.json
 /dspa-frontend/package-lock.json
 /tools.yaml
+/RENDERED_FEATURES.md

@@ -492,7 +492,7 @@ describe('NightingaleComponent Rendering', () => {
         });
 
         it('renders domain feature track if features exist', () => {
-            const { container } = render(
+            render(
                 <NightingaleComponent 
                     proteinData={mockProteinData}
                     pdbIds={[]}
@@ -502,6 +502,45 @@ describe('NightingaleComponent Rendering', () => {
             );
             expect(screen.getByText('Domain')).toBeInTheDocument();
             expect(screen.getByText('Binding site')).toBeInTheDocument();
+        });
+
+        it('renders requested structural, domain/site, and PTM feature tracks', () => {
+            const requestedFeatureData = {
+                ...mockProteinData,
+                featuresData: {
+                    ...mockProteinData.featuresData,
+                    features: [
+                        { type: 'HELIX', start: 1, end: 2 },
+                        { type: 'TURN', start: 3, end: 3 },
+                        { type: 'STRAND', start: 4, end: 5 },
+                        { type: 'BINDING', start: 6, end: 6 },
+                        { type: 'ACT_SITE', start: 7, end: 7 },
+                        { type: 'DOMAIN', start: 1, end: 5 },
+                        { type: 'COILED', start: 8, end: 9 },
+                        { type: 'METAL', start: 10, end: 10 },
+                        { type: 'MOD_RES', start: 2, end: 2 },
+                    ],
+                },
+            };
+
+            render(
+                <NightingaleComponent
+                    proteinData={requestedFeatureData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+
+            expect(screen.getByText('Alpha helix')).toBeInTheDocument();
+            expect(screen.getByText('Turn')).toBeInTheDocument();
+            expect(screen.getByText('Beta strand')).toBeInTheDocument();
+            expect(screen.getByText('Binding site')).toBeInTheDocument();
+            expect(screen.getByText('Active site')).toBeInTheDocument();
+            expect(screen.getByText('Domain')).toBeInTheDocument();
+            expect(screen.getByText('Coiled-coil')).toBeInTheDocument();
+            expect(screen.getByText('Metal binding')).toBeInTheDocument();
+            expect(screen.getByText('Modified residue')).toBeInTheDocument();
         });
 
         it('omits domain feature track if features do not exist', () => {

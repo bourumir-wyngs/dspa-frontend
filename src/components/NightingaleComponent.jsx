@@ -322,10 +322,13 @@ const NightingaleComponent = ({
     const navigationRef = useRef(null);
     const domainRef = useRef(null);
     const bindingRef = useRef(null);
+    const activeSiteRef = useRef(null);
+    const metalRef = useRef(null);
     const modifiedResidueRef = useRef(null);
     const disulfidRef = useRef(null);
     const betastrandRef = useRef(null);
     const alphaHelixRef = useRef(null);
+    const turnRef = useRef(null);
     const coiledCoilRef = useRef(null);
     const siteRef = useRef(null);
     const structureRef = useRef(null);
@@ -414,19 +417,25 @@ const NightingaleComponent = ({
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
     const hasSiteData = proteinData.featuresData.features.some(({ type }) => type === "SITE");
     const hasBindingData = proteinData.featuresData.features.some(({ type }) => type === "BINDING");
+    const hasActiveSiteData = proteinData.featuresData.features.some(({ type }) => type === "ACT_SITE");
+    const hasMetalData = proteinData.featuresData.features.some(({ type }) => type === "METAL");
     const hasModifiedResidueData = proteinData.featuresData.features.some(({ type }) => type === "MOD_RES");
     const hasDisulfidData = proteinData.featuresData.features.some(({ type }) => type === "DISULFID");
     const hasBetaStrandData = proteinData.featuresData.features.some(({ type }) => type === "STRAND");
     const hasAlphaHelixData = proteinData.featuresData.features.some(({ type }) => type === "HELIX");
+    const hasTurnData = proteinData.featuresData.features.some(({ type }) => type === "TURN");
     const hasCoiledCoilData = proteinData.featuresData.features.some(({ type }) => type === "COILED");
 
     const visibleTracks = [
         hasDomainData && "domain",
         hasBindingData && "binding",
+        hasActiveSiteData && "act_site",
+        hasMetalData && "metal",
         hasModifiedResidueData && "mod_res",
         hasSiteData && "site",
         hasDisulfidData && "disulfid",
         hasAlphaHelixData && "helix",
+        hasTurnData && "turn",
         hasBetaStrandData && "strand",
         hasCoiledCoilData && "coiled",
         showHeatmap && "heatmap"
@@ -583,9 +592,12 @@ const NightingaleComponent = ({
                 { id: "domain", ref: domainRef },
                 { id: "site", ref: siteRef },
                 { id: "binding", ref: bindingRef },
+                { id: "act_site", ref: activeSiteRef },
+                { id: "metal", ref: metalRef },
                 { id: "mod_res", ref: modifiedResidueRef },
                 { id: "disulfid", ref: disulfidRef },
                 { id: "helix", ref: alphaHelixRef },
+                { id: "turn", ref: turnRef },
                 { id: "strand", ref: betastrandRef },
                 { id: "coiled", ref: coiledCoilRef }
             ];
@@ -643,9 +655,12 @@ const NightingaleComponent = ({
         updateElementAttributes(navigationRef, "navigation");
         updateElementAttributes(domainRef, "domain");
         updateElementAttributes(bindingRef, "binding");
+        updateElementAttributes(activeSiteRef, "act_site");
+        updateElementAttributes(metalRef, "metal");
         updateElementAttributes(modifiedResidueRef, "mod_res");
         updateElementAttributes(disulfidRef, "disulfid");
         updateElementAttributes(alphaHelixRef, "helix");
+        updateElementAttributes(turnRef, "turn");
         updateElementAttributes(betastrandRef, "strand");
         updateElementAttributes(coiledCoilRef, "coiled");
         updateElementAttributes(siteRef, "site");
@@ -1047,6 +1062,18 @@ const NightingaleComponent = ({
                                 <td><nightingale-track ref={bindingRef} /></td>
                             </tr>
                         )}
+                        {hasActiveSiteData && (
+                            <tr>
+                                <td>Active site</td>
+                                <td><nightingale-track ref={activeSiteRef} /></td>
+                            </tr>
+                        )}
+                        {hasMetalData && (
+                            <tr>
+                                <td>Metal binding</td>
+                                <td><nightingale-track ref={metalRef} /></td>
+                            </tr>
+                        )}
                         {hasModifiedResidueData && (
                             <tr>
                                 <td>Modified residue</td>
@@ -1063,6 +1090,12 @@ const NightingaleComponent = ({
                             <tr>
                                 <td>Alpha helix</td>
                                 <td><nightingale-track ref={alphaHelixRef} /></td>
+                            </tr>
+                        )}
+                        {hasTurnData && (
+                            <tr>
+                                <td>Turn</td>
+                                <td><nightingale-track ref={turnRef} /></td>
                             </tr>
                         )}
                         {hasBetaStrandData && (
