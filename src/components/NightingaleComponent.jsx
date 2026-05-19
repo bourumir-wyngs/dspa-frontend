@@ -182,6 +182,23 @@ const getSequencePositionForTrackEvent = (event, trackElement) => {
     return Math.floor(displayStart + (sequenceX / sequenceWidth) * (displayEnd + 1 - displayStart));
 };
 
+const applyExactTrackBaseWidth = (trackElement) => {
+    if (!trackElement || trackElement.__dspaExactTrackBaseWidth) {
+        return;
+    }
+
+    trackElement.getSingleBaseWidth = function getExactTrackBaseWidth() {
+        if (!this.xScale) {
+            return -1;
+        }
+
+        const baseWidth = this.xScale(2) - this.xScale(1);
+        return Number.isFinite(baseWidth) ? baseWidth : -1;
+    };
+
+    trackElement.__dspaExactTrackBaseWidth = true;
+};
+
 
 const TOOLTIP_VIEWPORT_MARGIN = 12;
 
@@ -576,6 +593,8 @@ const NightingaleComponent = ({
             tracks.forEach(({ id, ref }) => {
                 const trackElement = ref.current;
                 if (trackElement) {
+                    applyExactTrackBaseWidth(trackElement);
+
                     let trackFeatures = mappedFeatures.filter(({ type }) => type.toUpperCase() === id.toUpperCase());
                 
                     if (id.toUpperCase() === "BINDING") {
@@ -1075,5 +1094,5 @@ const NightingaleComponent = ({
     );
 };
 export default NightingaleComponent;
-export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, relayHeatmapHighlightEvent };
+export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent };
     

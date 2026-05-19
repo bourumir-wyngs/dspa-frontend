@@ -50,7 +50,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, relayHeatmapHighlightEvent } from '../NightingaleComponent';
+import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent } from '../NightingaleComponent';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -164,6 +164,30 @@ describe('NightingaleComponent Utilities', () => {
 
             expect(getSequencePositionForTrackEvent(new MouseEvent('mousemove', { clientX: 105 }), track)).toBeNull();
             expect(getSequencePositionForTrackEvent(new MouseEvent('mousemove', { clientX: 1090 }), track)).toBeNull();
+        });
+    });
+
+    describe('applyExactTrackBaseWidth', () => {
+        it('overrides the custom track minimum residue width with the exact xScale width', () => {
+            const track = document.createElement('nightingale-track');
+            track.xScale = jest.fn((position) => position * 2.5);
+
+            applyExactTrackBaseWidth(track);
+
+            expect(track.getSingleBaseWidth()).toBe(2.5);
+            expect(track.__dspaExactTrackBaseWidth).toBe(true);
+        });
+
+        it('is idempotent once applied to a track element', () => {
+            const track = document.createElement('nightingale-track');
+            track.xScale = jest.fn((position) => position * 3);
+
+            applyExactTrackBaseWidth(track);
+            const getSingleBaseWidth = track.getSingleBaseWidth;
+            applyExactTrackBaseWidth(track);
+
+            expect(track.getSingleBaseWidth).toBe(getSingleBaseWidth);
+            expect(track.getSingleBaseWidth()).toBe(3);
         });
     });
     describe('getHeatmapTooltip', () => {
