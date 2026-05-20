@@ -34,7 +34,9 @@ jobs:
         env:
           PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
         run: |
-          BROWSER=none HOST=127.0.0.1 PORT=3000 npm start &
+          CI=true npm run build
+
+          npx --yes serve@14.2.4 -s build -l tcp://127.0.0.1:3000 &
           SERVER_PID=$!
           trap 'kill $SERVER_PID' EXIT
 
