@@ -26,5 +26,24 @@ jobs:
           cache-dependency-path: package-lock.json
       - name: Install dependencies
         run: npm ci
-      - name: Run tests
+      - name: Run unit tests
         run: CI=true npm test -- --coverage --watchAll=false
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+      - name: Run e2e tests
+        env:
+          PLAYWRIGHT_BASE_URL: http://127.0.0.1:3000
+        run: |
+          BROWSER=none HOST=127.0.0.1 PORT=3000 npm start &
+          SERVER_PID=$!
+          trap 'kill $SERVER_PID' EXIT
+
+          for _ in {1..60}; do
+            if curl -fsS "$PLAYWRIGHT_BASE_URL" > /dev/null; then
+              break
+            fi
+            sleep 2
+          done
+
+          curl -fsS "$PLAYWRIGHT_BASE_URL" > /dev/null
+          npm run e2e
