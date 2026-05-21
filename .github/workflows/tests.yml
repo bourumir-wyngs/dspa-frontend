@@ -43,7 +43,6 @@ jobs:
           cp -R dspa-nightingale-bundle/nightingale-structure node_modules/@dspa-nightingale/nightingale-structure
           cp -R dspa-nightingale-bundle/nightingale-track node_modules/@dspa-nightingale/nightingale-track
 
-          cp -R dspa-nightingale-bundle/nightingale-sequence-heatmap/. node_modules/@nightingale-elements/nightingale-sequence-heatmap/
       - name: Run unit tests
         run: CI=true npm test -- --coverage --watchAll=false
       - name: Install Playwright browsers
