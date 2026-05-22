@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { useNavigate, useParams } from 'react-router-dom';
 import config from '../config.json';
 import NightingaleComponent from './NightingaleComponent.jsx';
-import "@nightingale-elements/nightingale-sequence";
 import VolcanoPlot from '../visualization/volcanoplot.js';
 import { ProteinScoresTable } from '../visualization/ProteinScoresTable.js';
 
@@ -66,7 +65,6 @@ const TABS = {
 };
 
 const Condition = () => {
-    const chartRefVolcano = useRef(null);
     const isMounted = useRef(true);
     const containerRef = useRef(null);
 
@@ -80,8 +78,6 @@ const Condition = () => {
     const [displayedProtein, setDisplayedProtein] = useState("");
     const [pdbIds, setPdbIds] = useState([]);
     const [selectedPdbId, setSelectedPdbId] = useState("");
-    const [selectedExperiment, setSelectedExperiment] = useState("");
-    const [allGoTerms, setAllGoTerms] = useState([]);
     const [filteredExperimentData, setFilteredExperimentData] = useState([]);
     const [displayedProteinData, setDisplayedProteinData] = useState(null);
     const [activeTab, setActiveTab] = useState(TABS.VOLCANO_PLOT);
@@ -101,7 +97,6 @@ const Condition = () => {
 
     const handleProteinClick = (proteinAccession) => {
         setDisplayedProtein(proteinAccession);
-        setSelectedExperiment("");
     };
     const fetchData = async (url, signal) => {
         const response = await fetch(url, { signal });
@@ -147,7 +142,6 @@ const Condition = () => {
                     setDifferentialAbundanceData(rawData.conditionData.differentialAbundanceDataList);
                     setExperimentIDs(rawData.conditionData.experimentIDsList);
                     setFilteredExperimentData(rawData.conditionData.proteinScoresTable);
-                    setAllGoTerms(rawData.conditionData.goTerms);
                     setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);   
             }
             } catch (error) {
@@ -242,7 +236,6 @@ const Condition = () => {
                 <VolcanoPlot
                 differentialAbundanceDataList={differentialAbundanceData}
                 highlightedProtein={displayedProtein}
-                chartRef={chartRefVolcano}
                 />
             )}
             </div>
@@ -255,7 +248,6 @@ const Condition = () => {
                         experimentData={filteredExperimentData}
                         onProteinClick={handleProteinClick}
                         displayedProtein={displayedProtein}
-                        goTerms={allGoTerms}
                     />
                 </div>
 
@@ -268,7 +260,6 @@ const Condition = () => {
                             pdbIds={pdbIds}
                             selectedPdbId={selectedPdbId}
                             setSelectedPdbId={setSelectedPdbId}
-                            selectedExperiment={selectedExperiment}
                             showHeatmap={true}
                             passedExperimentIDs={experimentIDs}
                             containerRef={containerRef}

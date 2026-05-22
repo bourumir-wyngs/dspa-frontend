@@ -10,8 +10,6 @@ jest.mock('react-router-dom', () => ({
   useLocation: () => mockUseLocation(),
 }), { virtual: true });
 
-jest.mock('@nightingale-elements/nightingale-sequence', () => ({}), { virtual: true });
-
 import Home from '../../components/Home';
 
 const flushPromises = async () => {

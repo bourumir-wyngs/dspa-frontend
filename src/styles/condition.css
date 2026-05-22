@@ -1,14 +1,3 @@
-/* Add this in your main.css or within a <style> tag in your component */
-.header-or-tab {
-    text-align: center;
-    background-color: var(--bg-color); /* Light grey background */
-    padding: var(--padding);
-    border: var(--border);
-    cursor: pointer;
-    font-size: var(--font-size-base) !important;
-    font-family: var(--font-family-base);
-}
-
 .tab-button {
     padding: var(--padding);
     border: var(--border);
@@ -34,14 +23,6 @@ text.pep-key-label, text.protein-name-label {
     pointer-events: none; 
 }
 
-/* .condition-section-wrapper {
-    flex-direction: column; 
-    gap: var(--gap);
-    width: 100%; 
-    box-sizing: border-box; 
-    max-height: calc(60vh - 120px);
-    height: 100%;
-} */
 .condition-section-wrapper {
     display: block;
     width: 100%;
@@ -63,23 +44,9 @@ text.pep-key-label, text.protein-name-label {
     height: 100%;
 }
 
-.goenrichment-chart-content svg {
-    max-width: 100%;
-    display: block;
-  }
-
-  .condition-section svg,
-  .goenrichment-chart-content svg {
+.condition-section svg {
     width: 100%;
     display: block;
-  }
-  
-
-.condition-row {
-    margin: 2px ; 
-    box-sizing: border-box; /* Ensures padding and borders are included in size calculations */
-    display: flex;
-    flex-wrap: wrap;
 }
 
 .condition-section.condition-protein-experiment-wrapper {
@@ -87,21 +54,6 @@ text.pep-key-label, text.protein-name-label {
     min-height: 600px;
 }
 
-
-.condition-content-wrapper {
-    display: flex;
-    flex-direction: row; 
-    justify-content: space-between;
-    align-items: flex-start;
-}
-
-.condition-container {
-    display: flex;
-    gap: var(--gap);
-    z-index: 10; 
-    width: 100%;
-    box-sizing: border-box; 
-}
 
 .condition-table-container {
     flex: 0 0 35%;
@@ -194,14 +146,6 @@ text.pep-key-label, text.protein-name-label {
     background-color: var(--bg-color); /* Optional: to match the dropdown bg */
 }
 
-.goenrichment-dropdown option {
-    font-size: var(--font-size-base);
-    font-family: var(--font-family-base);
-    color: var(--text-color);
-    background-color: var(--bg-color); /* Optional: to match the dropdown bg */
-}
-
-
 select {
     padding: var(--padding);
     border: var(--border);
@@ -222,63 +166,6 @@ select:focus {
     font-size: var(--font-size-base) !important;
     font-family: var(--font-family-base);
 }
-.condition-goenrichment-container {
-    display: flex;
-    flex-direction: column; /* Stack header and chart vertically */
-    width: 100%; /* Full width */
-}
-
-.condition-goenrichment-container {
-    margin-top: var(--margin); 
-    width: 100%;
-    flex-direction: column;
-    display: flex;
-}
-
-.namespace-dropdown {
-    margin-top: 10px;
-}
-
-.goenrichment-chart-content {
-    width: 100%;
-    height: auto;
-    max-height: 500px; 
-    overflow-y: auto;  
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    max-height: calc(60vh - 100px);
-  }
-
-.goenrichment-chart-container {
-    width: 100%; 
-    max-height: calc(60vh - 120px); 
-    overflow-y: auto; 
-    padding: var(--padding);
-    border: var(--border);
-    box-sizing: border-box;
-    margin-top: var(--margin-top);
-    margin-bottom: var(--margin-bottom);
-    margin-left: var(--margin-left);
-    margin-right: var(--margin-right);
-    display: flex;
-    flex-direction: column; 
-} 
-
-
-
-/* Wrapper for the chart content */
-.goenrichment-chart-wrapper {
-    flex: 1;
-    display: flex; 
-    justify-content: center; 
-    align-items: center; 
-    overflow: visible; 
-    padding: var(--padding);
-    position: relative;
-    width: 100%;
-}
 
 .condition-volcano-plot-wrapper {
     flex: 1;
@@ -297,18 +184,6 @@ select:focus {
     max-width: var(--volcano-plots-max-width);
 }
 
-.condition-go-enrichment-wrapper {
-    flex: 1;
-    display: flex; 
-    justify-content: center; 
-    overflow: visible; 
-    padding: var(--padding);
-    position: relative;
-    width: 100%;
-    min-height: 350px; /* Default minimum height */
-    max-height: none; 
-}
-
 .volcano-plot-section-expanded {
     max-height: none;
     flex-wrap: wrap;
@@ -317,106 +192,10 @@ select:focus {
   }
   
 
-/* Heading for the chart section */
-.goenrichment-chart-container h2 {
-    min-height: 50px; 
-    line-height: 50px; 
-    margin: 0;
-    text-align: center; 
-}
-
-.condition-experiment-container {
-    display: flex;
-    flex-direction: column;
-    width: 100%;
-    padding: var(--padding);
-    border: var(--border);
-    box-shadow: var(--border-shadow);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    box-sizing: border-box;
-}
-
-.experiment-boxes {
-    display: flex;
-    flex-wrap: wrap;
-    gap: var(--gap);
-    margin-top: var(--margin-top);
-}
-
-/* Individual experiment box */
-.experiment-box {
-    flex: 1 1 calc(20% - 20px); 
-    max-width: 20%;
-    padding: var(--padding);
-    border: var(--border);
-    border-radius: var(--border-radius);
-    box-shadow: var(--box-shadow);
-    background-color: var(--bg-color);
-    text-align: center;
-    box-sizing: border-box;
-    transition: var(--transition);
-}
-
-/* Hover effect for experiment boxes */
-.experiment-box:hover {
-    background-color: var(--bg-color);
-    transform: translateY(-2px); /* Slight lift effect */
-}
-
-/* Experiment box heading */
-.experiment-box h2 {
-    margin-bottom: var(--margin-bottom);
-}
-/* Placeholder text */
-.experiment-box p {
-    margin: 0;
-}
-
-.experiment-table-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    width: 100%;
-}
-
-.go-term-selector {
-    margin-bottom: var(--margin-bottom);
-    width: 100%;
-    font-size: var(--font-size-base) !important;
-    font-family: var(--font-family-base);
-}
-
-.go-term-dropdown {
-    width: 100%;
-    padding: var(--padding);
-    border: var(--border);
-    border-radius: var(--border-radius);
-    background-color: var(--bg-color);
-    cursor: pointer;
-    appearance: none;
-    font-size: var(--font-size-base) !important;
-    font-family: var(--font-family-base);
-}
-
 table {
     width: 100%; 
     box-sizing: border-box; 
 }
-
-.dose-response-d3-container text {
-    font-size: var(--font-size-base) !important;
-    font-family: var(--font-family-base);
-  }
-
-.dose-response-d3-container {
-    font-size: var(--font-size-base) !important;
-    gap: var(--gap);
-    display: grid;
-    padding: var(--padding);
-    grid-template-columns: repeat(4, 1fr);
-  }
-
 
 .volcano-plot-section {
         display: flex;
@@ -444,23 +223,6 @@ table {
     font-size: var(--font-size-base) !important;
   }
   
-.volcano-plot-grid {
-    display: flex;
-    flex-wrap: wrap;
-    gap:  var(--gap);
-    width: 100%;
-  } 
-  
-  
-.plot-grid-wrapper {
-    display: grid;
-    grid-template-columns: repeat(4, 1fr);
-    gap: var(--gap);
-    padding: var(--padding);
-    max-width: 1300px;
-    margin: 0 auto;
-  }
-
 .plot-grid-wrapper-volcano {
     display: grid;
     gap: var(--gap);
@@ -478,7 +240,6 @@ table {
   
   .plot-wrapper svg {
     width: 100%;
-    height: auto;
     height: auto;
     font-size: var(--font-size-base) !important;
   }
@@ -539,42 +300,4 @@ table {
     overflow-x: auto;
     overflow-y: hidden;
     font-size: var(--font-size-base) !important;
-}
-
-.tab-content {
-    visibility: hidden;
-    height: 0;
-    overflow: hidden;
-  }
-  
-  .tab-content.active {
-    visibility: visible;
-    height: auto;
-  }
-
-
-.go-tooltip {
-    position: absolute;
-    background:  var(--bg-color);
-    border:var(--border);
-    border-radius: var(--border-radius);
-    padding: var(--padding);
-    font-size: var(--font-size-base);
-    color:var(--text-color);
-    box-shadow: var(--box-shadow);
-    pointer-events: auto;
-    pointer-events: none;
-    max-width: 300px;
-    word-wrap: break-word;
-    z-index: 10;
-    transition: var(--transition);
-  }
-  
-.tooltip-protein {
-    margin: 2px 0;
-    cursor: pointer;
-    color: var(--text-color);
-}
-.tooltip-protein:hover {
-    text-decoration: underline;
 }

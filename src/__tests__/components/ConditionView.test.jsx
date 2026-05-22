@@ -10,8 +10,6 @@ jest.mock('react-router-dom', () => ({
   useParams: () => mockUseParams(),
 }), { virtual: true });
 
-jest.mock('@nightingale-elements/nightingale-sequence', () => ({}), { virtual: true });
-
 jest.mock('../../components/NightingaleComponent.jsx', () => (props) => (
   <div data-testid="nightingale-component">
     {props.masterCondition}::{props.selectedPdbId}::{props.passedExperimentIDs.length}

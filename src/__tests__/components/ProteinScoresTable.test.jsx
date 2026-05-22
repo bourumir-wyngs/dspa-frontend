@@ -39,8 +39,6 @@ describe('ProteinScoresTable', () => {
         experimentData={baseData}
         onProteinClick={jest.fn()}
         displayedProtein={null}
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
 
@@ -76,8 +74,6 @@ describe('ProteinScoresTable', () => {
         ]}
         onProteinClick={jest.fn()}
         displayedProtein={null}
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
 
@@ -92,8 +88,6 @@ describe('ProteinScoresTable', () => {
         experimentData={baseData}
         onProteinClick={onProteinClick}
         displayedProtein="P22222"
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
 
@@ -110,8 +104,6 @@ describe('ProteinScoresTable', () => {
         experimentData={[]}
         onProteinClick={jest.fn()}
         displayedProtein={null}
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
 
@@ -129,8 +121,6 @@ describe('ProteinScoresTable', () => {
         experimentData={dataWithDuplicates}
         onProteinClick={jest.fn()}
         displayedProtein={null}
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
     const rows = screen.getAllByRole('row');
@@ -144,8 +134,6 @@ describe('ProteinScoresTable', () => {
         experimentData={baseData}
         onProteinClick={jest.fn()}
         displayedProtein="UNKNOWN"
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
     const selectedRow = container.querySelector('tr.protein-row.selected');
@@ -158,8 +146,6 @@ describe('ProteinScoresTable', () => {
         experimentData={[{ proteinAccession: 'P1', maxLog2FC: 10, n_peptides: 1 }]}
         onProteinClick={jest.fn()}
         displayedProtein={null}
-        goTerms={[]}
-        onGoTermSelect={jest.fn()}
       />
     );
     const rows = screen.getAllByRole('row');
