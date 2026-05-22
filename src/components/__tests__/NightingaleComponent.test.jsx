@@ -50,7 +50,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent } from '../NightingaleComponent';
+import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -167,6 +167,48 @@ describe('NightingaleComponent Utilities', () => {
         });
     });
 
+    describe('getSequencePositionForHeatmapEvent', () => {
+        const rect = (left, width) => ({
+            left,
+            width,
+            right: left + width,
+            top: 0,
+            bottom: 100,
+            height: 100,
+        });
+
+        it('maps a heatmap canvas mouse position to a sequence position', () => {
+            const heatmap = document.createElement('nightingale-sequence-heatmap');
+            const shadowRoot = heatmap.attachShadow({ mode: 'open' });
+            const canvas = document.createElement('canvas');
+            canvas.getBoundingClientRect = jest.fn(() => rect(100, 1000));
+            shadowRoot.appendChild(canvas);
+
+            heatmap.setAttribute('length', '1000');
+            heatmap.setAttribute('display-start', '101');
+            heatmap.setAttribute('display-end', '200');
+            heatmap.setAttribute('margin-left', '0');
+            heatmap.setAttribute('margin-right', '0');
+
+            const event = new MouseEvent('mousemove', { clientX: 600 });
+
+            expect(getSequencePositionForHeatmapEvent(event, heatmap)).toBe(151);
+        });
+
+        it('returns null outside the heatmap sequence area', () => {
+            const heatmap = document.createElement('nightingale-sequence-heatmap');
+            heatmap.getBoundingClientRect = jest.fn(() => rect(100, 1000));
+            heatmap.setAttribute('length', '100');
+            heatmap.setAttribute('display-start', '1');
+            heatmap.setAttribute('display-end', '100');
+            heatmap.setAttribute('margin-left', '10');
+            heatmap.setAttribute('margin-right', '10');
+
+            expect(getSequencePositionForHeatmapEvent(new MouseEvent('mousemove', { clientX: 105 }), heatmap)).toBeNull();
+            expect(getSequencePositionForHeatmapEvent(new MouseEvent('mousemove', { clientX: 1090 }), heatmap)).toBeNull();
+        });
+    });
+
     describe('applyExactTrackBaseWidth', () => {
         it('overrides the custom track minimum residue width with the exact xScale width', () => {
             const track = document.createElement('nightingale-track');
@@ -249,6 +291,81 @@ describe('NightingaleComponent Utilities', () => {
             relayHeatmapHighlightEvent(initialEvent, source);
             
             expect(eventCount).toBe(0);
+            document.body.removeChild(manager);
+        });
+    });
+
+    describe('dispatchHeatmapHoverHighlightEvent', () => {
+        it('dispatches a manager highlight event for the hovered heatmap residue', () => {
+            const manager = document.createElement('nightingale-manager');
+            const heatmap = document.createElement('nightingale-sequence-heatmap');
+            manager.appendChild(heatmap);
+            document.body.appendChild(manager);
+
+            heatmap.getBoundingClientRect = jest.fn(() => ({
+                left: 100,
+                width: 1000,
+                right: 1100,
+                top: 0,
+                bottom: 100,
+                height: 100,
+            }));
+            heatmap.setAttribute('length', '1000');
+            heatmap.setAttribute('display-start', '101');
+            heatmap.setAttribute('display-end', '200');
+            heatmap.setAttribute('margin-left', '0');
+            heatmap.setAttribute('margin-right', '0');
+
+            let receivedEvent = null;
+            manager.addEventListener('change', (event) => {
+                receivedEvent = event;
+            });
+
+            const highlight = dispatchHeatmapHoverHighlightEvent(
+                new MouseEvent('mousemove', { clientX: 600 }),
+                heatmap
+            );
+
+            expect(highlight).toBe('151:151');
+            expect(receivedEvent).not.toBeNull();
+            expect(receivedEvent.detail).toMatchObject({
+                eventType: 'mouseover',
+                highlight: '151:151',
+                feature: { position: 151 },
+                __dspaRelayedHeatmapEvent: true,
+            });
+
+            document.body.removeChild(manager);
+        });
+
+        it('does not redispatch duplicate hover highlights for the same residue', () => {
+            const manager = document.createElement('nightingale-manager');
+            const heatmap = document.createElement('nightingale-sequence-heatmap');
+            manager.appendChild(heatmap);
+            document.body.appendChild(manager);
+
+            heatmap.getBoundingClientRect = jest.fn(() => ({
+                left: 0,
+                width: 100,
+                right: 100,
+                top: 0,
+                bottom: 100,
+                height: 100,
+            }));
+            heatmap.setAttribute('length', '100');
+            heatmap.setAttribute('display-start', '1');
+            heatmap.setAttribute('display-end', '100');
+
+            let eventCount = 0;
+            manager.addEventListener('change', () => {
+                eventCount++;
+            });
+
+            dispatchHeatmapHoverHighlightEvent(new MouseEvent('mousemove', { clientX: 10 }), heatmap);
+            dispatchHeatmapHoverHighlightEvent(new MouseEvent('mousemove', { clientX: 10 }), heatmap);
+
+            expect(eventCount).toBe(1);
+
             document.body.removeChild(manager);
         });
     });

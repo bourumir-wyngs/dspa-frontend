@@ -81,6 +81,7 @@ const Condition = () => {
     const [filteredExperimentData, setFilteredExperimentData] = useState([]);
     const [displayedProteinData, setDisplayedProteinData] = useState(null);
     const [activeTab, setActiveTab] = useState(TABS.VOLCANO_PLOT);
+    const displayedProteinRef = useRef("");
 
     const navigate = useNavigate();
 
@@ -103,6 +104,7 @@ const Condition = () => {
         setDisplayedProteinData(null);
         setPdbIds([]);
         setSelectedPdbId("");
+        displayedProteinRef.current = proteinAccession;
         setDisplayedProtein(proteinAccession);
     };
     const fetchData = async (url, signal) => {
@@ -161,10 +163,14 @@ const Condition = () => {
                     setDifferentialAbundanceData(rawData.conditionData.differentialAbundanceDataList);
                     setExperimentIDs(rawData.conditionData.experimentIDsList);
                     setFilteredExperimentData(rawData.conditionData.proteinScoresTable);
-                    setDisplayedProteinData(null);
-                    setPdbIds([]);
-                    setSelectedPdbId("");
-                    setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);
+                    const nextDisplayedProtein = rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession || "";
+                    if (nextDisplayedProtein !== displayedProteinRef.current) {
+                        setDisplayedProteinData(null);
+                        setPdbIds([]);
+                        setSelectedPdbId("");
+                    }
+                    displayedProteinRef.current = nextDisplayedProtein;
+                    setDisplayedProtein(nextDisplayedProtein);
             }
             } catch (error) {
                 if (!signal.aborted && isMounted.current) {
@@ -207,6 +213,10 @@ const Condition = () => {
         isMounted.current = true;
         return () => { isMounted.current = false; };
     }, []);
+
+    useEffect(() => {
+        displayedProteinRef.current = displayedProtein;
+    }, [displayedProtein]);
 
 
     useEffect(() => {

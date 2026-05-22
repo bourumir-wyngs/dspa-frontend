@@ -39,6 +39,7 @@ const defaultAttributes = {
     "display-start": "1",
     "display-end": 0, 
     "margin-left": "0",
+    "margin-right": "0",
     "margin-color": "white",
     "highlight-event": "onmouseover",
     "highlight-color": "rgb(255, 210, 128)"
@@ -47,6 +48,7 @@ const defaultAttributes = {
 const heatmapAttributes = {
     "min-width": "10",
     "margin-left": "0",
+    "margin-right": "0",
     "margin-color": "white",
 };
 
@@ -179,6 +181,49 @@ const getSequencePositionForTrackEvent = (event, trackElement) => {
     const length = getTrackNumericValue(trackElement, "length", 0);
     const displayStart = getTrackNumericValue(trackElement, "display-start", 1);
     const rawDisplayEnd = getTrackNumericValue(trackElement, "display-end", length);
+    const displayEnd = rawDisplayEnd > 0 ? rawDisplayEnd : length;
+
+    if (displayEnd < displayStart) {
+        return null;
+    }
+
+    return Math.floor(displayStart + (sequenceX / sequenceWidth) * (displayEnd + 1 - displayStart));
+};
+
+const getHeatmapCanvasRect = (heatmapElement) => {
+    const canvasElement = heatmapElement?.shadowRoot?.querySelector?.('canvas')
+        || heatmapElement?.querySelector?.('canvas');
+    const canvasRect = canvasElement?.getBoundingClientRect?.();
+
+    if (canvasRect?.width) {
+        return canvasRect;
+    }
+
+    return heatmapElement?.getBoundingClientRect?.();
+};
+
+const getSequencePositionForHeatmapEvent = (event, heatmapElement) => {
+    if (!heatmapElement || !Number.isFinite(event?.clientX)) {
+        return null;
+    }
+
+    const rect = getHeatmapCanvasRect(heatmapElement);
+    if (!rect?.width) {
+        return null;
+    }
+
+    const marginLeft = getTrackNumericValue(heatmapElement, "margin-left", 0);
+    const marginRight = getTrackNumericValue(heatmapElement, "margin-right", 0);
+    const sequenceWidth = rect.width - marginLeft - marginRight;
+    const sequenceX = event.clientX - rect.left - marginLeft;
+
+    if (sequenceWidth <= 0 || sequenceX < 0 || sequenceX >= sequenceWidth) {
+        return null;
+    }
+
+    const length = getTrackNumericValue(heatmapElement, "length", 0);
+    const displayStart = getTrackNumericValue(heatmapElement, "display-start", 1);
+    const rawDisplayEnd = getTrackNumericValue(heatmapElement, "display-end", length);
     const displayEnd = rawDisplayEnd > 0 ? rawDisplayEnd : length;
 
     if (displayEnd < displayStart) {
@@ -324,6 +369,38 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
 };
 
 const RELAY_EVENT_MARKER = '__dspaRelayedHeatmapEvent';
+
+const dispatchHeatmapHoverHighlightEvent = (event, heatmapElement) => {
+    const position = getSequencePositionForHeatmapEvent(event, heatmapElement);
+    if (position == null) {
+        return null;
+    }
+
+    const highlight = `${position}:${position}`;
+    if (heatmapElement.__dspaLastHoverHighlight === highlight) {
+        return highlight;
+    }
+
+    heatmapElement.__dspaLastHoverHighlight = highlight;
+    const managerElement = heatmapElement.closest('nightingale-manager') || document.querySelector('nightingale-manager');
+    if (!managerElement) {
+        return highlight;
+    }
+
+    managerElement.dispatchEvent(new CustomEvent('change', {
+        detail: {
+            eventType: 'mouseover',
+            feature: { position },
+            highlight,
+            parentEvent: event,
+            [RELAY_EVENT_MARKER]: true,
+        },
+        bubbles: true,
+        composed: true,
+    }));
+
+    return highlight;
+};
 
 const relayHeatmapHighlightEvent = (event, sourceElement) => {
     if (!sourceElement || event?.detail?.[RELAY_EVENT_MARKER]) {
@@ -864,12 +941,22 @@ const NightingaleComponent = ({
 
                     relayHeatmapHighlightEvent(event, heatmapElement);
                 };
+                const handleHeatmapMouseMove = (event) => {
+                    dispatchHeatmapHoverHighlightEvent(event, heatmapElement);
+                };
+                const handleHeatmapMouseLeave = () => {
+                    heatmapElement.__dspaLastHoverHighlight = null;
+                };
 
                 heatmapElement.addEventListener('wheel', handleHeatmapWheel, true);
                 heatmapElement.addEventListener('change', handleHeatmapHighlightChange);
+                heatmapElement.addEventListener('mousemove', handleHeatmapMouseMove);
+                heatmapElement.addEventListener('mouseleave', handleHeatmapMouseLeave);
                 cleanupCallbacks.push(() => {
                     heatmapElement.removeEventListener('wheel', handleHeatmapWheel, true);
                     heatmapElement.removeEventListener('change', handleHeatmapHighlightChange);
+                    heatmapElement.removeEventListener('mousemove', handleHeatmapMouseMove);
+                    heatmapElement.removeEventListener('mouseleave', handleHeatmapMouseLeave);
                     if (heatmapElement.__dspaPropagateRangeEventsTimer) {
                         clearTimeout(heatmapElement.__dspaPropagateRangeEventsTimer);
                         heatmapElement.__dspaPropagateRangeEventsTimer = null;
@@ -1036,13 +1123,21 @@ const NightingaleComponent = ({
                         <td style={{ width: '150px' }}></td>
                         <td style={{ width: '100%', overflow: 'visible' }}>
                             <style>{`nightingale-navigation .start-label, .end-label { visibility: hidden; }`}</style>
-                            <nightingale-navigation ref={navigationRef}/>
+                            <nightingale-navigation ref={navigationRef} id="navigation" {...trackAttributes}/>
                         </td>
                     </tr>
 
                     <tr>
                         <td >Sequence</td>
-                        <td style={{ width: '100%', overflow: 'visible' }}><nightingale-sequence ref={sequenceRef} style={{ display: 'block', width: '100%' }} /></td>
+                        <td style={{ width: '100%', overflow: 'visible' }}>
+                            <nightingale-sequence
+                                ref={sequenceRef}
+                                id="sequence"
+                                sequence={featureSequence}
+                                {...trackAttributes}
+                                style={{ display: 'block', width: '100%' }}
+                            />
+                        </td>
                     </tr>
 
                     {showHeatmap && shouldSplitHeatmap && (
@@ -1065,6 +1160,7 @@ const NightingaleComponent = ({
                                             display-end={sequenceLength}
                                             highlight-event="onmouseover"
                                             margin-left={heatmapAttributes["margin-left"]}
+                                            margin-right={heatmapAttributes["margin-right"]}
                                             margin-color={heatmapAttributes["margin-color"]}
                                             style={{ display: 'block', width: '100%' }}
                                         />
@@ -1091,6 +1187,7 @@ const NightingaleComponent = ({
                                             display-end={sequenceLength}
                                             highlight-event="onmouseover"
                                             margin-left={heatmapAttributes["margin-left"]}
+                                            margin-right={heatmapAttributes["margin-right"]}
                                             margin-color={heatmapAttributes["margin-color"]}
                                             style={{ display: 'block', width: '100%' }}
                                         />
@@ -1116,6 +1213,7 @@ const NightingaleComponent = ({
                                     display-end={sequenceLength}
                                     highlight-event="onmouseover"
                                     margin-left={heatmapAttributes["margin-left"]}
+                                    margin-right={heatmapAttributes["margin-right"]}
                                     margin-color={heatmapAttributes["margin-color"]}
                                     style={{ display: 'block', width: '100%' }}
                                 />
@@ -1126,69 +1224,69 @@ const NightingaleComponent = ({
                         {hasDomainData && (
                             <tr >
                                 <td>Domain</td>
-                                <td><nightingale-track ref={domainRef} /></td>
+                                <td><nightingale-track ref={domainRef} id="domain" {...trackAttributes} /></td>
                             </tr>
                         )}
 
                         {hasBindingData && (
                             <tr >
                                 <td>Binding site</td>
-                                <td><nightingale-track ref={bindingRef} /></td>
+                                <td><nightingale-track ref={bindingRef} id="binding" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasActiveSiteData && (
                             <tr>
                                 <td>Active site</td>
-                                <td><nightingale-track ref={activeSiteRef} /></td>
+                                <td><nightingale-track ref={activeSiteRef} id="act_site" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasMetalData && (
                             <tr>
                                 <td>Metal binding</td>
-                                <td><nightingale-track ref={metalRef} /></td>
+                                <td><nightingale-track ref={metalRef} id="metal" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasModifiedResidueData && (
                             <tr>
                                 <td>Modified residue</td>
-                                <td><nightingale-track ref={modifiedResidueRef} /></td>
+                                <td><nightingale-track ref={modifiedResidueRef} id="mod_res" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasDisulfidData && (
                             <tr>
                                 <td>Disulfide bond</td>
-                                <td><nightingale-track ref={disulfidRef} /></td>
+                                <td><nightingale-track ref={disulfidRef} id="disulfid" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasAlphaHelixData && (
                             <tr>
                                 <td>Alpha helix</td>
-                                <td><nightingale-track ref={alphaHelixRef} /></td>
+                                <td><nightingale-track ref={alphaHelixRef} id="helix" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasTurnData && (
                             <tr>
                                 <td>Turn</td>
-                                <td><nightingale-track ref={turnRef} /></td>
+                                <td><nightingale-track ref={turnRef} id="turn" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasBetaStrandData && (
                             <tr>
                                 <td>Beta strand</td>
-                                <td ><nightingale-track ref={betastrandRef} /></td>
+                                <td ><nightingale-track ref={betastrandRef} id="strand" {...trackAttributes} /></td>
                             </tr>
                         )}
                         {hasCoiledCoilData && (
                             <tr>
                                 <td>Coiled-coil</td>
-                                <td><nightingale-track ref={coiledCoilRef} /></td>
+                                <td><nightingale-track ref={coiledCoilRef} id="coiled" {...trackAttributes} /></td>
                             </tr>
                         )}
 
                         {hasSiteData && (
                             <tr>
                                 <td>Site</td>
-                                <td><nightingale-track ref={siteRef} /></td>
+                                <td><nightingale-track ref={siteRef} id="site" {...trackAttributes} /></td>
                             </tr>
                         )}
 
@@ -1201,5 +1299,5 @@ const NightingaleComponent = ({
     );
 };
 export default NightingaleComponent;
-export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent };
+export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent };
     
