@@ -142,6 +142,82 @@ describe('ConditionView', () => {
 
   });
 
+  it('keeps protein details when a canonical condition refetch selects the same protein', async () => {
+    mockUseParams.mockReturnValue({ selectedCondition: 'heat-shock|||123' });
+
+    let resolveCanonicalCondition;
+    const canonicalConditionResponse = new Promise(resolve => {
+      resolveCanonicalCondition = resolve;
+    });
+
+    const conditionData = {
+      condition: 'heat-shock',
+      differentialAbundanceDataList: [{ protein: 'P11111', log2fc: 2 }],
+      experimentIDsList: ['EXP-1'],
+      proteinScoresTable: [
+        { proteinAccession: 'P11111' },
+        { proteinAccession: 'P22222' },
+      ],
+      goTerms: ['stress response'],
+    };
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            conditions: [{ value: 'heat-shock', label: 'Heat shock' }],
+          }),
+        });
+      }
+
+      if (url.includes('condition/data?condition=heat-shock|||123')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ conditionData }),
+        });
+      }
+
+      if (url.includes('condition/data?condition=heat-shock')) {
+        return canonicalConditionResponse;
+      }
+
+      if (url.includes('proteins?proteinName=')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ proteinData: { sequence: 'MPEPTIDE' } }),
+        });
+      }
+
+      if (url.includes('rest.uniprot.org/uniprotkb/')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({ uniProtKBCrossReferences: [] }),
+        });
+      }
+
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    render(<Condition />);
+
+    expect(await screen.findByTestId('nightingale-component')).toHaveTextContent('Heat shock::AF-P11111-F1::1');
+
+    resolveCanonicalCondition({
+      ok: true,
+      json: async () => ({ conditionData }),
+    });
+
+    await waitFor(() => {
+      expect(global.fetch.mock.calls.some(([url]) => url.includes('condition/data?condition=heat-shock'))).toBe(true);
+    });
+
+    await waitFor(() => {
+      expect(screen.getByTestId('nightingale-component')).toHaveTextContent('Heat shock::AF-P11111-F1::1');
+    });
+  });
+
   it('navigates when the selected condition changes', async () => {
     render(<Condition />);
 
