@@ -50,7 +50,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 import React from 'react';
 import { render, screen, fireEvent } from '@testing-library/react';
 import '@testing-library/jest-dom';
-import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
+import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -232,6 +232,17 @@ describe('NightingaleComponent Utilities', () => {
             expect(track.getSingleBaseWidth()).toBe(3);
         });
     });
+
+    describe('refreshNightingaleDimensions', () => {
+        it('calls the Nightingale dimension refresh hook when available', () => {
+            const element = { onDimensionsChange: jest.fn() };
+
+            refreshNightingaleDimensions(element);
+
+            expect(element.onDimensionsChange).toHaveBeenCalledTimes(1);
+        });
+    });
+
     describe('getHeatmapTooltip', () => {
         it('handles null or NaN scores', () => {
             const result1 = getHeatmapTooltip({ score: null });

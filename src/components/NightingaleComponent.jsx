@@ -250,6 +250,12 @@ const applyExactTrackBaseWidth = (trackElement) => {
     trackElement.__dspaExactTrackBaseWidth = true;
 };
 
+const refreshNightingaleDimensions = (element) => {
+    if (typeof element?.onDimensionsChange === "function") {
+        element.onDimensionsChange();
+    }
+};
+
 
 const TOOLTIP_VIEWPORT_MARGIN = 12;
 
@@ -708,12 +714,16 @@ const NightingaleComponent = ({
 
         const eventListeners = [];
 
-        const updateElementAttributes = (ref, id) => {
+        const updateElementAttributes = (ref, id, { refreshDimensions = false } = {}) => {
             if (ref.current) {
                 ref.current.setAttribute("id", id);
                 Object.keys(trackAttributes).forEach(key => {
                     ref.current.setAttribute(key, trackAttributes[key]);
                 });
+
+                if (refreshDimensions) {
+                    refreshNightingaleDimensions(ref.current);
+                }
                 
                 ref.current.addEventListener('customEvent', handleCustomEvent);
                 eventListeners.push({ element: ref.current, type: 'customEvent', listener: handleCustomEvent });
@@ -785,7 +795,7 @@ const NightingaleComponent = ({
             });
         };
         
-        updateElementAttributes(navigationRef, "navigation");
+        updateElementAttributes(navigationRef, "navigation", { refreshDimensions: true });
         updateElementAttributes(domainRef, "domain");
         updateElementAttributes(bindingRef, "binding");
         updateElementAttributes(activeSiteRef, "act_site");
@@ -1299,5 +1309,5 @@ const NightingaleComponent = ({
     );
 };
 export default NightingaleComponent;
-export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent };
+export { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent };
     
