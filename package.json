@@ -8,14 +8,14 @@
     "@nightingale-elements/nightingale-manager": "^5.4.1",
     "@nightingale-elements/nightingale-msa": "^5.4.1",
     "@nightingale-elements/nightingale-navigation": "^5.4.1",
+    "@nightingale-elements/nightingale-sequence": "^5.4.1",
     "@nightingale-elements/nightingale-sequence-heatmap": "^5.4.1",
-    "@nightingale-elements/nightingale-structure": "^5.4.1",
     "d3": "^7.9.0",
-    "dompurify": "^3.0.6",
     "react": "^18.1.0",
     "react-dom": "^18.1.0",
     "react-scripts": "^5.0.1",
-    "react-select": "^5.9.0"
+    "react-select": "^5.9.0",
+    "xhr2": "^0.2.1"
   },
   "scripts": {
     "start": "react-scripts start",
@@ -63,10 +63,8 @@
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
-    "@tsconfig/react-native": "^3.0.5",
     "@types/jest": "^29.5.12",
     "@types/react": "^18.3.4",
-    "@types/react-test-renderer": "^18.3.0",
     "eslint-config-react-app": "^7.0.1",
     "react-router-dom": "^7.13.2"
   },

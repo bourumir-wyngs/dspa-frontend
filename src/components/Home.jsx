@@ -1,5 +1,4 @@
 import React, { useEffect, useRef, useState } from "react";
-import "@nightingale-elements/nightingale-sequence";
 import config from "../config.json";
 import { useLocation, useNavigate } from "react-router-dom";
 import proteinDynamics from "../protein_dynamics.gif";

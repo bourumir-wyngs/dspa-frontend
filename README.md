@@ -9,12 +9,12 @@ This subproject provides the browser-based user interface for the DSPAtlas/DynaP
 - authenticating access to the application,
 - letting users search for proteins and browse conditions and experiments,
 - rendering protein-centric visualizations that combine sequence context, structural references, and experiment-derived LiP score data,
-- presenting experiment metadata, significant protein summaries, volcano plots, and dose-response views.
+- presenting experiment metadata, significant protein summaries, volcano plots, and GO enrichment views.
 
 In the wider DSPA workspace, `dspa-frontend` is the presentation layer that consumes data prepared by the DSPA backend and exposes it as an interactive web application.
 
 ## Technologies
-Built as a React 18 single-page application with React Router-based navigation and Create React App tooling, this frontend combines custom DSPA UI components with `react-select`-driven filtering and Nightingale web components for protein sequence/structure views. Data-rich charts such as volcano plots and dose-response curves are rendered with D3.js, while the application integrates both the internal DSPA backend API and the UniProt REST API for biological data and structure references.
+Built as a React 18 single-page application with React Router-based navigation and Create React App tooling, this frontend combines custom DSPA UI components with `react-select`-driven filtering and Nightingale web components for protein sequence/structure views. Data-rich charts such as volcano plots and GO enrichment views are rendered with D3.js, while the application integrates both the internal DSPA backend API and the UniProt REST API for biological data and structure references.
 
 ## E2E tests
 
@@ -32,7 +32,7 @@ The frontend talks primarily to the DSPA backend through the relative base path 
 
 - `apiEndpoint`: `/api/v1/`
 
-The application uses this backend API to retrieve searchable protein records, condition overviews, experiment metadata, experiment-level statistics, and dose-response data that are then rendered in the UI.
+The application uses this backend API to retrieve searchable protein records, condition overviews, experiment metadata, experiment-level statistics, and GO enrichment data that are then rendered in the UI.
 
 In addition to the internal DSPA API, the frontend also calls the external UniProt REST API to resolve structure references for a selected protein accession:
 
@@ -58,9 +58,6 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
   - Provides the condition list used on the home page and in the condition view selector.
 - `GET /api/v1/condition/data?condition=...`
   - Loads condition-specific experiment/protein data for the condition detail page.
-- `GET /api/v1/doseresponse?...`
-  - Supplies dose-response data visualized inside the condition view.
-
 ### External third-party endpoint
 
 - `GET https://rest.uniprot.org/uniprotkb/{accession}.json`
@@ -87,7 +84,7 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
 - `src/components/ExperimentView.jsx`
   - Detailed experiment page with metadata, significant proteins, volcano plots, and QC PDF download.
 - `src/components/ConditionView.jsx`
-  - Condition-focused analysis page combining protein selection, structural context, volcano plots, and dose-response information.
+  - Condition-focused analysis page combining protein selection, structural context, and volcano plots.
 - `src/components/Impressum.jsx`
   - Static informational/legal page.
 - `src/components/LoginForm.jsx`
@@ -101,8 +98,6 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
   - Reusable search results table/list for protein lookups.
 - `src/visualization/volcanoplot.js`
   - Volcano plot rendering for experiment and condition analyses.
-- `src/visualization/DoseResponse.js`
-  - Dose-response visualization used in the condition page.
 - `src/visualization/ProteinScoresTable.js`
   - Tabular presentation of protein scoring/condition-associated results.
 
@@ -110,7 +105,3 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
 
 - `src/config.json`
   - Stores the backend base path used by the frontend.
-- `src/utils/api.js`
-  - Contains generic fetch helpers and a protein-data hook prototype.
-- `src/utils/fetchExtraData.js`, `src/utils/fetchstructures.js`
-  - Helper utilities for retrieving supplementary data used by visual components.

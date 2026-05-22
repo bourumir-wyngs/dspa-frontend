@@ -16,7 +16,7 @@ const formatMaxLog2FC = (proteinData) => {
 
 const getSignificantPeptideCount = (proteinData) => proteinData.n_peptides ?? proteinData.count ?? 'N/A';
 
-export const ProteinScoresTable = ({ experimentData, onProteinClick, displayedProtein, goTerms, onGoTermSelect }) => {
+export const ProteinScoresTable = ({ experimentData, onProteinClick, displayedProtein }) => {
     const sortedExperimentData = useMemo(() => {
         if (!Array.isArray(experimentData)) {
             return [];

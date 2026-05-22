@@ -181,7 +181,6 @@ function makeContinuousScale(transform = value => value) {
 function scaleBand() {
   let domain = [];
   let range = [0, 1];
-  let paddingValue = 0;
   const scale = value => {
     const index = domain.indexOf(value);
     if (index < 0) return undefined;
@@ -189,7 +188,7 @@ function scaleBand() {
   };
   scale.domain = next => (next === undefined ? domain : (domain = next, scale));
   scale.range = next => (next === undefined ? range : (range = next, scale));
-  scale.padding = next => (paddingValue = next, scale);
+  scale.padding = () => scale;
   scale.bandwidth = () => {
     const span = Math.abs(range[1] - range[0]);
     // Deliberately simple band spacing for DOM-focused tests.

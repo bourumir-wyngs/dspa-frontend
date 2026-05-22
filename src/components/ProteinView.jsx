@@ -40,7 +40,6 @@ async function getPdbIds(uniprotAccession) {
 
 function ProteinVisualizationComponents({ proteinData, pdbIds, loading, error }) {
     const [selectedPdbId, setSelectedPdbId] = useState("");
-    const [selectedExperiment] = useState("");
 
     useEffect(() => {
         if (pdbIds && pdbIds.length > 0) {
@@ -60,8 +59,7 @@ function ProteinVisualizationComponents({ proteinData, pdbIds, loading, error })
                              proteinData={proteinData} 
                              pdbIds={pdbIds}
                              selectedPdbId={selectedPdbId}
-                             setSelectedPdbId={setSelectedPdbId} 
-                             selectedExperiment={selectedExperiment}/>
+                             setSelectedPdbId={setSelectedPdbId}/>
                         </div>
                         </div>
                         </div>
