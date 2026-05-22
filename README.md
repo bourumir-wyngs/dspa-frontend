@@ -1,3 +1,5 @@
+[![Tests](https://github.com/bourumir-wyngs/dspa-frontend/actions/workflows/test.yml/badge.svg)](https://github.com/bourumir-wyngs/dspa-frontend/actions/workflows/test.yml)
+
 # DSPAtlas Frontend
 
 [![Run Tests](https://github.com/bourumir-wyngs/dspa-frontend/actions/workflows/tests.yml/badge.svg)](https://github.com/bourumir-wyngs/dspa-frontend/actions/workflows/tests.yml)
