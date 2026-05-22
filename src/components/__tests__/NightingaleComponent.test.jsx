@@ -48,7 +48,7 @@ jest.mock('@dspa-nightingale/nightingale-structure', () => {
 }, { virtual: true });
 
 import React from 'react';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
 
@@ -240,6 +240,11 @@ describe('NightingaleComponent Utilities', () => {
             refreshNightingaleDimensions(element);
 
             expect(element.onDimensionsChange).toHaveBeenCalledTimes(1);
+        });
+
+        it('ignores elements that do not expose a dimension refresh hook', () => {
+            expect(() => refreshNightingaleDimensions(document.createElement('div'))).not.toThrow();
+            expect(() => refreshNightingaleDimensions(null)).not.toThrow();
         });
     });
 
@@ -502,6 +507,66 @@ describe('NightingaleComponent Rendering', () => {
         
         expect(container).toBeInTheDocument();
         expect(screen.getByText('Test Protein')).toBeInTheDocument();
+    });
+
+    it('refreshes navigation dimensions after applying dynamic Nightingale attributes', async () => {
+        const NavigationElement = customElements.get('nightingale-navigation');
+        const TrackElement = customElements.get('nightingale-track');
+        const originalNavigationRefresh = NavigationElement.prototype.onDimensionsChange;
+        const originalTrackRefresh = TrackElement.prototype.onDimensionsChange;
+
+        const navigationRefresh = jest.fn(function onDimensionsChange() {
+            this.__dimensionRefreshSnapshot = {
+                height: this.getAttribute('height'),
+                length: this.getAttribute('length'),
+                displayEnd: this.getAttribute('display-end'),
+            };
+
+            let svg = this.querySelector('svg');
+            if (!svg) {
+                svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+                this.appendChild(svg);
+            }
+            svg.setAttribute('height', this.getAttribute('height'));
+        });
+        const trackRefresh = jest.fn();
+
+        NavigationElement.prototype.onDimensionsChange = navigationRefresh;
+        TrackElement.prototype.onDimensionsChange = trackRefresh;
+
+        try {
+            const { container } = render(
+                <NightingaleComponent
+                    proteinData={mockProteinData}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+
+            const navigation = container.querySelector('nightingale-navigation');
+            await waitFor(() => expect(navigationRefresh).toHaveBeenCalled());
+
+            expect(navigation.__dimensionRefreshSnapshot).toEqual({
+                height: '30',
+                length: '10',
+                displayEnd: '10',
+            });
+            expect(navigation.querySelector('svg')).toHaveAttribute('height', '30');
+            expect(trackRefresh).not.toHaveBeenCalled();
+        } finally {
+            if (originalNavigationRefresh) {
+                NavigationElement.prototype.onDimensionsChange = originalNavigationRefresh;
+            } else {
+                delete NavigationElement.prototype.onDimensionsChange;
+            }
+
+            if (originalTrackRefresh) {
+                TrackElement.prototype.onDimensionsChange = originalTrackRefresh;
+            } else {
+                delete TrackElement.prototype.onDimensionsChange;
+            }
+        }
     });
 
     describe('Experiment Fallbacks & Controls', () => {
