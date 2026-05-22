@@ -96,6 +96,13 @@ const Condition = () => {
     };
 
     const handleProteinClick = (proteinAccession) => {
+        if (proteinAccession === displayedProtein) {
+            return;
+        }
+
+        setDisplayedProteinData(null);
+        setPdbIds([]);
+        setSelectedPdbId("");
         setDisplayedProtein(proteinAccession);
     };
     const fetchData = async (url, signal) => {
@@ -110,6 +117,10 @@ const Condition = () => {
 
     const fetchProteinData = useCallback(async (proteinName, signal) => {
         if (!proteinName) return;
+        setDisplayedProteinData(null);
+        setPdbIds([]);
+        setSelectedPdbId("");
+
         try {
             const queryParams = `proteinName=${encodeURIComponent(proteinName)}`;
             const url = `${config.apiEndpoint}proteins?${queryParams}`;
@@ -119,10 +130,18 @@ const Condition = () => {
             }
             const data = await response.json();
             const pdbResponse = await getPdbIds(proteinName);
+
+            if (signal.aborted || !isMounted.current) {
+                return;
+            }
+
             setPdbIds(pdbResponse);
-            setDisplayedProteinData(data.proteinData || {});
+            setDisplayedProteinData({
+                ...(data.proteinData || {}),
+                proteinName: data.proteinData?.proteinName || proteinName,
+            });
         } catch (error) {
-            if (isMounted.current) {
+            if (!signal.aborted && isMounted.current) {
                 setError(`Error fetching protein data: ${error.message}`);
                 setDisplayedProteinData({});
             }
@@ -142,7 +161,10 @@ const Condition = () => {
                     setDifferentialAbundanceData(rawData.conditionData.differentialAbundanceDataList);
                     setExperimentIDs(rawData.conditionData.experimentIDsList);
                     setFilteredExperimentData(rawData.conditionData.proteinScoresTable);
-                    setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);   
+                    setDisplayedProteinData(null);
+                    setPdbIds([]);
+                    setSelectedPdbId("");
+                    setDisplayedProtein(rawData.conditionData.proteinScoresTable?.[0]?.proteinAccession);
             }
             } catch (error) {
                 if (!signal.aborted && isMounted.current) {
@@ -253,9 +275,9 @@ const Condition = () => {
 
                 <div ref={containerRef} className="condition-protein-container">
                     <h2>{displayedProtein}</h2>
-                    {displayedProteinData && pdbIds && experimentIDs.length > 0 && (
+                    {displayedProteinData?.proteinName === displayedProtein && selectedPdbId && pdbIds.length > 0 && experimentIDs.length > 0 && (
                         <NightingaleComponent
-                            key={displayedProtein}
+                            key={displayedProteinData.proteinName}
                             proteinData={displayedProteinData}
                             pdbIds={pdbIds}
                             selectedPdbId={selectedPdbId}

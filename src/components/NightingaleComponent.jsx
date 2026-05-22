@@ -33,7 +33,7 @@ function getLipScoreColor(score) {
 }
 
 const defaultAttributes = {
-    "min-width": "1200",
+    "min-width": "10",
     length: 0, 
     height: 15, 
     "display-start": "1",
@@ -42,6 +42,12 @@ const defaultAttributes = {
     "margin-color": "white",
     "highlight-event": "onmouseover",
     "highlight-color": "rgb(255, 210, 128)"
+};
+
+const heatmapAttributes = {
+    "min-width": "10",
+    "margin-left": "0",
+    "margin-color": "white",
 };
 
 const getHeatmapTooltip = (d) => {
@@ -244,6 +250,46 @@ const attachHeatmapTooltipViewportGuard = (heatmapElement) => {
     root.addEventListener('click', clampAfterTooltipUpdate);
     heatmapElement.__dspaTooltipViewportGuardAttached = true;
 };
+const isDisplayRangeChangeDetail = (detail) => (
+    typeof detail === 'object' &&
+    detail !== null &&
+    (
+        detail.type === 'display-start' ||
+        detail.type === 'display-end' ||
+        Object.prototype.hasOwnProperty.call(detail, 'display-start') ||
+        Object.prototype.hasOwnProperty.call(detail, 'display-end')
+    )
+);
+
+const syncHeatmapWidthToHost = (heatmapElement) => {
+    if (!heatmapElement) {
+        return;
+    }
+
+    const hostWidth = Math.round(heatmapElement.getBoundingClientRect?.().width || heatmapElement.offsetWidth || 0);
+    if (hostWidth > 0 && Number(heatmapElement.width) !== hostWidth) {
+        heatmapElement.width = hostWidth;
+        if (typeof heatmapElement.requestUpdate === 'function') {
+            heatmapElement.requestUpdate('width');
+        }
+    }
+};
+
+const allowHeatmapRangePropagation = (heatmapElement) => {
+    if (!heatmapElement) {
+        return;
+    }
+
+    heatmapElement.__dspaPropagateRangeEvents = true;
+    if (heatmapElement.__dspaPropagateRangeEventsTimer) {
+        clearTimeout(heatmapElement.__dspaPropagateRangeEventsTimer);
+    }
+    heatmapElement.__dspaPropagateRangeEventsTimer = setTimeout(() => {
+        heatmapElement.__dspaPropagateRangeEvents = false;
+        heatmapElement.__dspaPropagateRangeEventsTimer = null;
+    }, 1000);
+};
+
 const applyHeatmapDataset = (heatmapElement, dataset) => {
     if (
         !heatmapElement ||
@@ -253,6 +299,7 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
         return;
     }
 
+    syncHeatmapWidthToHost(heatmapElement);
     heatmapElement.setHeatmapData(dataset.xDomain, dataset.yDomain, dataset.dataHeatmap);
 
     requestAnimationFrame(() => {
@@ -260,6 +307,7 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
             return;
         }
 
+        syncHeatmapWidthToHost(heatmapElement);
         heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
         heatmapElement.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
         attachHeatmapTooltipViewportGuard(heatmapElement);
@@ -284,6 +332,10 @@ const relayHeatmapHighlightEvent = (event, sourceElement) => {
 
     const detail = event?.detail;
     if (detail == null) {
+        return;
+    }
+
+    if (isDisplayRangeChangeDetail(detail)) {
         return;
     }
 
@@ -382,6 +434,14 @@ const NightingaleComponent = ({
 
 
     const sequenceLength = proteinData.proteinSequence.length;
+    const featureSequence = proteinData.featuresData?.sequence || proteinData.proteinSequence || '';
+    const featureSequenceLength = featureSequence.length || sequenceLength;
+    const trackAttributes = useMemo(() => ({
+        ...defaultAttributes,
+        length: featureSequenceLength,
+        height: trackHeight || defaultAttributes.height,
+        "display-end": featureSequenceLength,
+    }), [featureSequenceLength, trackHeight]);
     const defaultLipScoreString = JSON.stringify(Array(sequenceLength).fill(null));
     const [lipscoreString, setLipscoreString] = useState(defaultLipScoreString);
 
@@ -539,10 +599,6 @@ const NightingaleComponent = ({
 
     useEffect(() => {
         if (proteinData?.featuresData?.features && trackHeight) {
-            defaultAttributes.length = proteinData.featuresData.sequence.length;
-            defaultAttributes.height = trackHeight;
-            defaultAttributes['display-end'] = proteinData.featuresData.sequence.length;
-
             setMappedFeatures(proteinData.featuresData.features.map(ft => ({
                 ...ft,
                 start: ft.start || ft.begin
@@ -551,7 +607,7 @@ const NightingaleComponent = ({
     }, [proteinData, trackHeight]);
 
     useEffect(() => {
-        if (!trackHeight || !proteinData?.featuresData?.sequence || !sequenceRef.current) {
+        if (!trackHeight || !featureSequence || !sequenceRef.current) {
             return;
         }
 
@@ -578,8 +634,8 @@ const NightingaleComponent = ({
         const updateElementAttributes = (ref, id) => {
             if (ref.current) {
                 ref.current.setAttribute("id", id);
-                Object.keys(defaultAttributes).forEach(key => {
-                    ref.current.setAttribute(key, defaultAttributes[key]);
+                Object.keys(trackAttributes).forEach(key => {
+                    ref.current.setAttribute(key, trackAttributes[key]);
                 });
                 
                 ref.current.addEventListener('customEvent', handleCustomEvent);
@@ -666,8 +722,8 @@ const NightingaleComponent = ({
         updateElementAttributes(siteRef, "site");
 
         const attributes = {
-            ...defaultAttributes,
-            sequence: proteinData.featuresData.sequence,
+            ...trackAttributes,
+            sequence: featureSequence,
             id: "sequence",
         };
     
@@ -682,7 +738,7 @@ const NightingaleComponent = ({
                 element.removeEventListener(type, listener);
             });
         };
-    }, [mappedFeatures, trackHeight, proteinData?.featuresData?.sequence]);
+    }, [mappedFeatures, trackHeight, featureSequence, trackAttributes]);
 
 
     const handleCustomEvent = (e) => {
@@ -789,17 +845,35 @@ const NightingaleComponent = ({
                 ];
 
             heatmapConfigurations.forEach(({ ref }) => {
-                if (!ref.current) {
+                const heatmapElement = ref.current;
+                if (!heatmapElement) {
                     return;
                 }
 
-                const handleHeatmapHighlightChange = (event) => {
-                    relayHeatmapHighlightEvent(event, ref.current);
+                const handleHeatmapWheel = () => {
+                    allowHeatmapRangePropagation(heatmapElement);
                 };
 
-                ref.current.addEventListener('change', handleHeatmapHighlightChange);
+                const handleHeatmapHighlightChange = (event) => {
+                    if (isDisplayRangeChangeDetail(event.detail)) {
+                        if (!heatmapElement.__dspaPropagateRangeEvents) {
+                            event.stopPropagation();
+                        }
+                        return;
+                    }
+
+                    relayHeatmapHighlightEvent(event, heatmapElement);
+                };
+
+                heatmapElement.addEventListener('wheel', handleHeatmapWheel, true);
+                heatmapElement.addEventListener('change', handleHeatmapHighlightChange);
                 cleanupCallbacks.push(() => {
-                    ref.current?.removeEventListener('change', handleHeatmapHighlightChange);
+                    heatmapElement.removeEventListener('wheel', handleHeatmapWheel, true);
+                    heatmapElement.removeEventListener('change', handleHeatmapHighlightChange);
+                    if (heatmapElement.__dspaPropagateRangeEventsTimer) {
+                        clearTimeout(heatmapElement.__dspaPropagateRangeEventsTimer);
+                        heatmapElement.__dspaPropagateRangeEventsTimer = null;
+                    }
                 });
             });
 
@@ -984,14 +1058,14 @@ const NightingaleComponent = ({
                                         <nightingale-sequence-heatmap
                                             ref={matchingScoreBarcodeContainer}
                                             heatmap-id="seq-heatmap-matching"
-                                            min-width="1200"
+                                            min-width={heatmapAttributes["min-width"]}
                                             length={sequenceLength}
                                             height="100"
                                             display-start="1"
                                             display-end={sequenceLength}
                                             highlight-event="onmouseover"
-                                            margin-left="0"
-                                            margin-color="white"
+                                            margin-left={heatmapAttributes["margin-left"]}
+                                            margin-color={heatmapAttributes["margin-color"]}
                                             style={{ display: 'block', width: '100%' }}
                                         />
                                     ) : (
@@ -1010,14 +1084,14 @@ const NightingaleComponent = ({
                                         <nightingale-sequence-heatmap
                                             ref={otherScoreBarcodeContainer}
                                             heatmap-id="seq-heatmap-other"
-                                            min-width="1200"
+                                            min-width={heatmapAttributes["min-width"]}
                                             length={sequenceLength}
                                             height="100"
                                             display-start="1"
                                             display-end={sequenceLength}
                                             highlight-event="onmouseover"
-                                            margin-left="0"
-                                            margin-color="white"
+                                            margin-left={heatmapAttributes["margin-left"]}
+                                            margin-color={heatmapAttributes["margin-color"]}
                                             style={{ display: 'block', width: '100%' }}
                                         />
                                     ) : (
@@ -1035,14 +1109,14 @@ const NightingaleComponent = ({
                                 <nightingale-sequence-heatmap
                                     ref={scoreBarcodeContainer}
                                     heatmap-id="seq-heatmap"
-                                    min-width="1200"
+                                    min-width={heatmapAttributes["min-width"]}
                                     length={sequenceLength}
                                     height="100"
                                     display-start="1"
                                     display-end={sequenceLength}
                                     highlight-event="onmouseover"
-                                    margin-left="0"
-                                    margin-color="white"
+                                    margin-left={heatmapAttributes["margin-left"]}
+                                    margin-color={heatmapAttributes["margin-color"]}
                                     style={{ display: 'block', width: '100%' }}
                                 />
                             </td>
