@@ -46,6 +46,12 @@
       "react-app/jest"
     ]
   },
+  "jest": {
+    "transform": {
+      "^.+\\.css$": "<rootDir>/src/testUtils/cssTransform.js",
+      "^(?!.*\\.(js|jsx|mjs|cjs|ts|tsx|css|json)$)": "<rootDir>/src/testUtils/fileTransform.js"
+    }
+  },
   "browserslist": {
     "production": [
       ">0.2%",
@@ -66,22 +72,42 @@
     "@types/jest": "^29.5.12",
     "@types/react": "^18.3.4",
     "eslint-config-react-app": "^7.0.1",
+    "jest-environment-jsdom": "^28.1.3",
     "react-router-dom": "^7.18.0"
   },
   "overrides": {
+    "@babel/core": "^7.29.6",
     "@babel/helpers": "^7.26.10",
     "@babel/plugin-transform-modules-systemjs": "^7.29.4",
     "@babel/runtime": "^7.26.10",
+    "@jest/core": "^28.1.3",
+    "ajv@<7": "^6.14.0",
+    "ajv@>=8 <9": "^8.18.0",
+    "babel-jest": "^28.1.3",
+    "brace-expansion@<2": "^1.1.13",
+    "brace-expansion@>=2 <3": "^2.0.3",
+    "compression": "^1.8.1",
     "express": "^4.22.2",
     "fast-uri": "^3.1.2",
     "flatted": "^3.4.2",
+    "follow-redirects": "^1.16.0",
     "form-data": "^3.0.5",
+    "http-proxy-middleware": "^2.0.9",
+    "js-yaml": "^4.2.0",
+    "jest": "^28.1.3",
+    "jest-cli": "^28.1.3",
+    "jest-config": "^28.1.3",
+    "jest-environment-jsdom": "^28.1.3",
+    "jest-runner": "^28.1.3",
     "jsonpath": "^1.3.0",
+    "jsdom": "^19.0.0",
+    "launch-editor": "^2.14.1",
     "lodash": "^4.18.1",
     "minimatch@<4": "^3.1.4",
     "minimatch@>=5 <6": "^5.1.8",
     "minimatch@>=9 <10": "^9.0.7",
     "node-forge": "^1.4.0",
+    "on-headers": "^1.1.0",
     "path-to-regexp": "^0.1.13",
     "picomatch": "^2.3.2",
     "rollup": "^2.80.0",
@@ -90,8 +116,12 @@
       "glob": "^10.5.0"
     },
     "underscore": "^1.13.8",
+    "terser-webpack-plugin": "^5.3.17",
+    "webpack": "^5.104.1",
     "ws@>=7 <8": "^7.5.11",
-    "ws@>=8 <9": "^8.21.0"
+    "ws@>=8 <9": "^8.21.0",
+    "yaml@<2": "^1.10.3",
+    "yaml@>=2 <3": "^2.8.3"
   },
   "resolutions": {
     "form-data": "^3.0.5"
