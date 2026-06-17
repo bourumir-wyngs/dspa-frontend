@@ -52,6 +52,16 @@ const heatmapAttributes = {
     "margin-color": "white",
 };
 
+const HTML_ESCAPE_MAP = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+};
+
+const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (character) => HTML_ESCAPE_MAP[character]);
+
 const getHeatmapTooltip = (d) => {
     if (d.missingCoverageDataset) {
         return `
@@ -69,10 +79,16 @@ const getHeatmapTooltip = (d) => {
             `;
     }
 
+    const experimentValue = d.yValue == null || d.yValue === "" ? "N/A" : String(d.yValue);
+    const conditionValue = d.condition == null || d.condition === "" ? "N/A" : String(d.condition);
+    const experimentHref = encodeURIComponent(experimentValue);
+    const experimentLabel = escapeHtml(experimentValue);
+    const conditionLabel = escapeHtml(conditionValue);
+
     return `
         <div class="tooltip-container">
-            Experiment: <a href="/experiment/${d.yValue}" target="_blank" rel="noopener noreferrer" class="tooltip-link"><strong>${d.yValue}</strong></a><br />
-            Condition: <strong class="tooltip-highlight">${d.condition || "N/A"}</strong><br />
+            Experiment: <a href="/experiment/${experimentHref}" target="_blank" rel="noopener noreferrer" class="tooltip-link"><strong>${experimentLabel}</strong></a><br />
+            Condition: <strong class="tooltip-highlight">${conditionLabel}</strong><br />
             LiP Score: <strong>${d.score.toFixed(2)}</strong>
         </div>`;
 };

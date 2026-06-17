@@ -268,6 +268,26 @@ describe('NightingaleComponent Utilities', () => {
             expect(result).toContain('CondA');
             expect(result).toContain('3.14');
         });
+
+        it('escapes untrusted experiment and condition values', () => {
+            const result = getHeatmapTooltip({
+                yValue: 'exp"><img src=x onerror=alert(1)>',
+                condition: '<script>alert(2)</script>',
+                score: 3.14159,
+            });
+
+            expect(result).toContain('/experiment/exp%22%3E%3Cimg%20src%3Dx%20onerror%3Dalert(1)%3E');
+            expect(result).toContain('exp&quot;&gt;&lt;img src=x onerror=alert(1)&gt;');
+            expect(result).toContain('&lt;script&gt;alert(2)&lt;/script&gt;');
+
+            const container = document.createElement('div');
+            container.innerHTML = result;
+
+            expect(container.querySelector('img')).toBeNull();
+            expect(container.querySelector('script')).toBeNull();
+            expect(container.textContent).toContain('exp"><img src=x onerror=alert(1)>');
+            expect(container.textContent).toContain('<script>alert(2)</script>');
+        });
     });
 
     describe('relayHeatmapHighlightEvent', () => {
