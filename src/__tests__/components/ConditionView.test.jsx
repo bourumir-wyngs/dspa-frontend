@@ -172,7 +172,7 @@ describe('ConditionView', () => {
         });
       }
 
-      if (url.includes('condition/data?condition=heat-shock|||123')) {
+      if (url.includes('condition/data?condition=heat-shock%7C%7C%7C123')) {
         return Promise.resolve({
           ok: true,
           json: async () => ({ conditionData }),
@@ -230,6 +230,47 @@ describe('ConditionView', () => {
     await waitFor(() => {
       expect(mockNavigate).toHaveBeenCalledWith('/condition/cold-shock');
     });
+  });
+
+  it('encodes the selected condition query parameter', async () => {
+    mockUseParams.mockReturnValue({ selectedCondition: 'heat-shock&admin=true' });
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('condition/allconditions')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            success: true,
+            conditions: [
+              { value: 'heat-shock&admin=true', label: 'Heat shock admin literal' },
+            ],
+          }),
+        });
+      }
+
+      if (url.includes('condition/data?condition=heat-shock%26admin%3Dtrue')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            conditionData: {
+              condition: 'heat-shock&admin=true',
+              differentialAbundanceDataList: [],
+              experimentIDsList: [],
+              proteinScoresTable: [],
+              goTerms: [],
+            },
+          }),
+        });
+      }
+
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    render(<Condition />);
+
+    expect(await screen.findByText(/Condition - Heat shock admin literal/i)).toBeInTheDocument();
+    expect(global.fetch.mock.calls.some(([url]) => url.includes('condition/data?condition=heat-shock%26admin%3Dtrue'))).toBe(true);
+    expect(global.fetch.mock.calls.some(([url]) => url.includes('condition/data?condition=heat-shock&admin=true'))).toBe(false);
   });
 
   it('updates the displayed protein and dependent panels when a protein is clicked', async () => {

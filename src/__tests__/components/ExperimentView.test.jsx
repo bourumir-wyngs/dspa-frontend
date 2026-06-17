@@ -149,6 +149,40 @@ describe('ExperimentView', () => {
     expect(firstProteinLink.getAttribute('href')).toBe('/visualize/P11111');
   });
 
+  it('encodes the experimentID query parameter', async () => {
+    mockUseParams.mockReturnValue({ experimentID: 'DYN-1&includeQcPdf=true' });
+
+    global.fetch = jest.fn((url) => {
+      if (url.includes('experiment?experimentID=DYN-1%26includeQcPdf%3Dtrue')) {
+        return Promise.resolve({
+          ok: true,
+          json: async () => ({
+            experimentData: {
+              experimentID: 'DYN-1&includeQcPdf=true',
+              differentialAbundanceDataList: [],
+              metaData: {},
+            },
+          }),
+        });
+      }
+
+      return Promise.reject(new Error(`Unhandled fetch URL: ${url}`));
+    });
+
+    await act(async () => {
+      root.render(<ExperimentView />);
+    });
+
+    await settleEffects();
+
+    expect(global.fetch).toHaveBeenCalledWith(
+      expect.stringContaining('experiment?experimentID=DYN-1%26includeQcPdf%3Dtrue')
+    );
+    expect(global.fetch).not.toHaveBeenCalledWith(
+      expect.stringContaining('experiment?experimentID=DYN-1&includeQcPdf=true')
+    );
+  });
+
   it('limits significant proteins table to 25 rows and expands on show_all click', async () => {
     const manyProteins = Array.from({ length: 30 }, (_, index) => ({
       proteinAccession: `P${String(index + 1).padStart(5, '0')}`,

@@ -3,6 +3,54 @@ import config from '../config.json';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 
+const DOI_PATTERN = /^(10\.\d{4,9})\/(\S+)$/i;
+
+const encodeDoiPath = (doi) => {
+  const match = doi.match(DOI_PATTERN);
+  if (!match) {
+    return null;
+  }
+
+  const [, prefix, suffix] = match;
+  const encodedSuffix = suffix.split('/').map(encodeURIComponent).join('/');
+  return `${encodeURIComponent(prefix)}/${encodedSuffix}`;
+};
+
+const getSafePublicationUrl = (doi) => {
+  if (!doi) {
+    return null;
+  }
+
+  const value = String(doi).trim();
+  if (!value) {
+    return null;
+  }
+
+  try {
+    const url = new URL(value);
+    return url.protocol === 'https:' ? url.href : null;
+  } catch {
+    const doiPath = encodeDoiPath(value);
+    return doiPath ? `https://doi.org/${doiPath}` : null;
+  }
+};
+
+const renderDoi = (doi) => {
+  if (!doi) {
+    return 'N/A';
+  }
+
+  const safeUrl = getSafePublicationUrl(doi);
+  if (!safeUrl) {
+    return doi;
+  }
+
+  return (
+    <a href={safeUrl} target="_blank" rel="noopener noreferrer" onClick={(event) => event.stopPropagation()}>
+      {doi}
+    </a>
+  );
+};
 
 const ExperimentOverview = () => {
   const [experiments, setExperiments] = useState([]);
@@ -131,9 +179,7 @@ const ExperimentOverview = () => {
           <td>{experiment.organism || 'N/A'}</td>
           <td>{experiment.perturbation || 'N/A'}</td>
           <td>{experiment.condition || 'N/A'}</td>
-          <td>
-            {experiment.doi ? <a href={experiment.doi}>{experiment.doi}</a>: 'N/A'}
-          </td>
+          <td>{renderDoi(experiment.doi)}</td>
         </tr>
       ))}
 </tbody>

@@ -64,6 +64,11 @@ const TABS = {
     VOLCANO_PLOT: 'Volcano Plot'
 };
 
+const getConditionDataUrl = (condition) => {
+    const queryParams = new URLSearchParams({ condition: condition ?? '' });
+    return `${config.apiEndpoint}condition/data?${queryParams.toString()}`;
+};
+
 const Condition = () => {
     const isMounted = useRef(true);
     const containerRef = useRef(null);
@@ -93,7 +98,7 @@ const Condition = () => {
     const handleConditionChange = (event) => {
         const selected = event.target.value;
         setSelectedCondition(selected);
-        navigate(`/condition/${selected}`);
+        navigate(`/condition/${encodeURIComponent(selected)}`);
     };
 
     const handleProteinClick = (proteinAccession) => {
@@ -155,7 +160,7 @@ const Condition = () => {
       
         const fetchconditionData = async (signal) =>{
             setLoading(true);
-            const url = `${config.apiEndpoint}condition/data?condition=${selectedCondition}`;
+            const url = getConditionDataUrl(selectedCondition);
             try {
                 const rawData = await fetchData(url, signal);
                 if (!abortController.signal.aborted) {

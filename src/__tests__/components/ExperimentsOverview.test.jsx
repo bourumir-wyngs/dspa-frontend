@@ -119,6 +119,70 @@ describe('ExperimentsOverview', () => {
     expect(container.textContent).not.toContain('LysC');
   });
 
+  it('only renders safe DOI and publication values as links', async () => {
+    global.fetch = jest.fn(() => Promise.resolve({
+      ok: true,
+      json: async () => ({
+        success: true,
+        experiments: [
+          {
+            dynaprot_experiment: 'DYN-SAFE',
+            organism: 'Human',
+            perturbation: 'Heat',
+            condition: 'Stress',
+            doi: 'https://doi.org/10.1000/safe',
+          },
+          {
+            dynaprot_experiment: 'DYN-BARE',
+            organism: 'Human',
+            perturbation: 'Heat',
+            condition: 'Stress',
+            doi: '10.1000/bare-doi',
+          },
+          {
+            dynaprot_experiment: 'DYN-JS',
+            organism: 'Human',
+            perturbation: 'Heat',
+            condition: 'Stress',
+            doi: 'javascript:alert(1)',
+          },
+          {
+            dynaprot_experiment: 'DYN-HTTP',
+            organism: 'Human',
+            perturbation: 'Heat',
+            condition: 'Stress',
+            doi: 'http://example.com/insecure',
+          },
+        ],
+      }),
+    }));
+
+    await act(async () => {
+      root.render(<ExperimentsOverview />);
+    });
+
+    await settleEffects();
+
+    const links = Array.from(container.querySelectorAll('tbody a'));
+    expect(links).toHaveLength(2);
+    expect(links[0]).toHaveTextContent('https://doi.org/10.1000/safe');
+    expect(links[0].getAttribute('href')).toBe('https://doi.org/10.1000/safe');
+    expect(links[0].getAttribute('rel')).toBe('noopener noreferrer');
+    expect(links[1]).toHaveTextContent('10.1000/bare-doi');
+    expect(links[1].getAttribute('href')).toBe('https://doi.org/10.1000/bare-doi');
+
+    expect(container.textContent).toContain('javascript:alert(1)');
+    expect(container.textContent).toContain('http://example.com/insecure');
+    expect(links.some((link) => link.getAttribute('href')?.startsWith('javascript:'))).toBe(false);
+    expect(links.some((link) => link.getAttribute('href')?.startsWith('http://'))).toBe(false);
+
+    act(() => {
+      Simulate.click(links[0]);
+    });
+
+    expect(mockNavigate).not.toHaveBeenCalled();
+  });
+
   it('filters the table and navigates when an experiment row is clicked', async () => {
     await act(async () => {
       root.render(<ExperimentsOverview />);

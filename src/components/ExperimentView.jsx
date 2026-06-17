@@ -14,6 +14,14 @@ const SIGNIFICANT_PROTEIN_HEADER_TOOLTIPS = {
 
 const SIGNIFICANT_PROTEINS_INITIAL_LIMIT = 25;
 
+const getExperimentUrl = (experimentID, includeQcPdf = false) => {
+    const queryParams = new URLSearchParams({ experimentID: experimentID ?? '' });
+    if (includeQcPdf) {
+        queryParams.set('includeQcPdf', 'true');
+    }
+    return `${config.apiEndpoint}experiment?${queryParams.toString()}`;
+};
+
 const ExperimentInfo = () => {
     const { experimentID } = useParams(); 
     const [experimentData, setExperimentData] = useState([]);
@@ -23,7 +31,7 @@ const ExperimentInfo = () => {
     const [showAllSignificantProteins, setShowAllSignificantProteins] = useState(false);
 
     const fetchExperimentData = useCallback(async () => {
-        const url = `${config.apiEndpoint}experiment?experimentID=${experimentID}`;
+        const url = getExperimentUrl(experimentID);
         try {
           const response = await fetch(url);
           if (!response.ok) {
@@ -46,7 +54,7 @@ const ExperimentInfo = () => {
                 let pdfData = qcPdfData;
 
                 if (!pdfData) {
-                    const response = await fetch(`${config.apiEndpoint}experiment?experimentID=${experimentID}&includeQcPdf=true`);
+                    const response = await fetch(getExperimentUrl(experimentID, true));
                     if (!response.ok) {
                         throw new Error(`HTTP error! Status: ${response.status}`);
                     }
