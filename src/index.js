@@ -35,7 +35,7 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
   });
-  const [isEthzLogoAvailable, setIsEthzLogoAvailable] = useState(true);
+  const [isEthzLogoAvailable, setIsEthzLogoAvailable] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -120,7 +120,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<ProteinSearch />} />
-        <Route path="/impressum" element={<Impressum suppressLabInfo={isEthzLogoAvailable} />} />
+        <Route path="/impressum" element={<Impressum showLabInfo={isEthzLogoAvailable} />} />
         <Route path="/visualize/:proteinName" element={<ProteinVisualization />} />
         <Route path="/experiment/:experimentID" element={<ExperimentInfo />} />
         <Route path="/experiments" element={<ExperimentsOverview />} />

@@ -1,10 +1,10 @@
-function Impressum ({ suppressLabInfo = false }) {
+function Impressum ({ showLabInfo = false }) {
   return (
     <>
       <main className="about">
       <div className="impressum-overview-container">
           <span className="impressum-header">Impressum</span><br />
-          {!suppressLabInfo && (
+          {showLabInfo && (
             <>
               <a
                 className="result-text"

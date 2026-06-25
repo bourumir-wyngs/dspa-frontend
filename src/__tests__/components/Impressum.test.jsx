@@ -21,21 +21,21 @@ describe('Impressum', () => {
     container = null;
   });
 
-  it('renders the page heading and lab information', () => {
+  it('renders the page heading without lab information by default', () => {
     act(() => {
       root.render(<Impressum />);
     });
 
     expect(container.textContent).toContain('Impressum');
-    expect(container.textContent).toContain('Picotti/Beltrao Lab');
+    expect(container.textContent).not.toContain('Picotti/Beltrao Lab');
   });
 
-  it('suppresses lab information when requested', () => {
+  it('renders lab information for official builds', () => {
     act(() => {
-      root.render(<Impressum suppressLabInfo />);
+      root.render(<Impressum showLabInfo />);
     });
 
     expect(container.textContent).toContain('Impressum');
-    expect(container.textContent).not.toContain('Picotti/Beltrao Lab');
+    expect(container.textContent).toContain('Picotti/Beltrao Lab');
   });
 });
