@@ -75,3 +75,33 @@ body, html {
   white-space: normal; 
 }
 
+.navigation-bar .navigation-brand {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  height: 60px;
+  padding: 6px 12px 6px 8px;
+  box-sizing: border-box;
+}
+
+.navigation-brand-logo {
+  display: block;
+  height: 36px;
+  width: auto;
+}
+
+.navigation-brand-logo-link,
+.navigation-brand-text {
+  align-items: center;
+  color: inherit;
+  display: flex;
+  text-decoration: none;
+}
+
+.navigation-brand-logo-link {
+  flex: 0 0 auto;
+}
+
+.navigation-brand-text {
+  line-height: 1;
+}

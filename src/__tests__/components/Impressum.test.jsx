@@ -29,4 +29,13 @@ describe('Impressum', () => {
     expect(container.textContent).toContain('Impressum');
     expect(container.textContent).toContain('Picotti/Beltrao Lab');
   });
+
+  it('suppresses lab information when requested', () => {
+    act(() => {
+      root.render(<Impressum suppressLabInfo />);
+    });
+
+    expect(container.textContent).toContain('Impressum');
+    expect(container.textContent).not.toContain('Picotti/Beltrao Lab');
+  });
 });

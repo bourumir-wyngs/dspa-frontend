@@ -28,3 +28,6 @@ yarn-error.log*
 /dspa-frontend/package-lock.json
 /tools.yaml
 /RENDERED_FEATURES.md
+
+# Logo is not part of the public repo.
+/public/images/ethz_logo.svg

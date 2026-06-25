@@ -1,4 +1,4 @@
-import React , { useState } from 'react';
+import React , { useEffect, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import { Link } from 'react-router-dom';
@@ -35,6 +35,28 @@ const App = () => {
   const [isAuthenticated, setIsAuthenticated] = useState(() => {
     return localStorage.getItem('isAuthenticated') === 'true';
   });
+  const [isEthzLogoAvailable, setIsEthzLogoAvailable] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const ethzLogo = new Image();
+
+    ethzLogo.onload = () => {
+      if (isMounted) {
+        setIsEthzLogoAvailable(true);
+      }
+    };
+    ethzLogo.onerror = () => {
+      if (isMounted) {
+        setIsEthzLogoAvailable(false);
+      }
+    };
+    ethzLogo.src = "/images/ethz_logo.svg";
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleLogin = (username, password) => {
     if (username === "lipatlas" && password === "lipatlas") {
@@ -58,7 +80,34 @@ const App = () => {
       <header className="app-header">
           <div className="navbar-top">
           <div className="navigation-bar navigation-white navigation-card">
-            <Link to="/" className="navigation-bar-item navigation-button navigation-wide">DYNAPROT</Link>
+            <div className="navigation-bar-item navigation-wide navigation-brand">
+              {isEthzLogoAvailable ? (
+                <a
+                  href="https://ethz.ch/en.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="navigation-brand-logo-link"
+                >
+                  <img
+                    src="/images/ethz_logo.svg"
+                    onError={() => {
+                      setIsEthzLogoAvailable(false);
+                    }}
+                    alt="ETH Zurich logo"
+                    className="navigation-brand-logo"
+                  />
+                </a>
+              ) : (
+                <Link to="/" className="navigation-brand-logo-link">
+                  <img
+                    src="/images/dpa_logo.svg"
+                    alt="DynaProt logo"
+                    className="navigation-brand-logo"
+                  />
+                </Link>
+              )}
+              <Link to="/" className="navigation-brand-text">DYNAPROT</Link>
+            </div>
             <div className="navigation-right navigation-hide-small">
             <Link to="/" className="navigation-bar-item navigation-button">HOME</Link>
             <Link to="/search" className="navigation-bar-item navigation-button">FIND PROTEINS</Link>
@@ -71,7 +120,7 @@ const App = () => {
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/search" element={<ProteinSearch />} />
-        <Route path="/impressum" element={<Impressum />} />
+        <Route path="/impressum" element={<Impressum suppressLabInfo={isEthzLogoAvailable} />} />
         <Route path="/visualize/:proteinName" element={<ProteinVisualization />} />
         <Route path="/experiment/:experimentID" element={<ExperimentInfo />} />
         <Route path="/experiments" element={<ExperimentsOverview />} />
