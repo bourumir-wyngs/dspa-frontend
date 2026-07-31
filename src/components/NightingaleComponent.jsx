@@ -615,6 +615,25 @@ const NightingaleComponent = ({
         showHeatmap && "heatmap"
     ].filter(Boolean);
 
+    useEffect(() => {
+        const navigationElement = navigationRef.current;
+        if (!navigationElement) return undefined;
+
+        const handleNavigationWheel = (event) => {
+            if (!Number.isFinite(event.deltaY) || event.deltaY === 0) return;
+
+            event.preventDefault();
+            if (event.deltaY < 0) {
+                navigationElement.zoomIn?.();
+            } else {
+                navigationElement.zoomOut?.();
+            }
+        };
+
+        navigationElement.addEventListener('wheel', handleNavigationWheel, { passive: false });
+        return () => navigationElement.removeEventListener('wheel', handleNavigationWheel);
+    }, [featureSequenceLength]);
+
 
 
     useEffect(() => {
@@ -1332,12 +1351,17 @@ const NightingaleComponent = ({
                         )}
 
                         <tr>
-                            <td>Woods plot</td>
+                            <td>
+                                Woods plot
+                                <div>log<sub>2</sub>FC</div>
+                            </td>
                             <td>
                                 <WoodsPlot
                                     length={featureSequenceLength}
                                     peptideData={woodsPlotPeptideData}
+                                    comparisonMetadata={experimentIDToMeta}
                                     selectedComparison={selectedExperiment}
+                                    onComparisonSelect={setSelectedExperiment}
                                 />
                             </td>
                         </tr>

@@ -6,36 +6,65 @@ const WOODS_PLOT_BOTTOM_MARGIN = 30;
 const MIN_ABSOLUTE_LOG2FC = 1;
 const Y_DOMAIN_PADDING_FACTOR = 1.1;
 const MIN_Y_TICK_SPACING = 16;
+const POSITIVE_PEPTIDE_COLOR = '#003f5c';
+const NEGATIVE_PEPTIDE_COLOR = '#8b0000';
 
 /**
- * Calculates a symmetric log2FC domain for every comparison available to the
+ * Calculates the global log2FC domain for every comparison available to the
  * current view. Keeping one domain prevents the vertical scale from jumping when
- * the selected comparison changes. A minimum of +/-1 ensures both cutoff lines
- * remain visible when data is empty or all fold changes are small.
+ * the selected comparison changes. Negative and positive limits are calculated
+ * separately to avoid reserving unused space merely to keep zero centered. A
+ * minimum of +/-1 ensures both cutoff lines remain visible.
  *
  * @param {Array<object>} peptideData Peptide rows containing `diff` log2FC values.
  * @returns {[number, number]} The padded `[minimum, maximum]` log2FC domain.
  */
 export const getWoodsPlotYDomain = (peptideData) => {
-    const maxAbsoluteLog2FC = peptideData.reduce((currentMaximum, { diff }) => {
-        if (diff == null || diff === '') return currentMaximum;
+    const limits = peptideData.reduce((currentLimits, { diff }) => {
+        if (diff == null || diff === '') return currentLimits;
 
         const numericDiff = Number(diff);
-        return Number.isFinite(numericDiff)
-            ? Math.max(currentMaximum, Math.abs(numericDiff))
-            : currentMaximum;
-    }, MIN_ABSOLUTE_LOG2FC);
+        if (!Number.isFinite(numericDiff)) return currentLimits;
 
-    // A percentile cap can replace this maximum later without changing consumers.
-    const yLimit = maxAbsoluteLog2FC * Y_DOMAIN_PADDING_FACTOR;
-    return [-yLimit, yLimit];
+        return {
+            minimum: Math.min(currentLimits.minimum, numericDiff),
+            maximum: Math.max(currentLimits.maximum, numericDiff),
+        };
+    }, {
+        minimum: -MIN_ABSOLUTE_LOG2FC,
+        maximum: MIN_ABSOLUTE_LOG2FC,
+    });
+
+    // Percentile caps can replace these extrema later without changing consumers.
+    return [
+        limits.minimum * Y_DOMAIN_PADDING_FACTOR,
+        limits.maximum * Y_DOMAIN_PADDING_FACTOR,
+    ];
 };
+
+/**
+ * Finds the peptide rows that define the global lower and upper log2FC limits.
+ *
+ * @param {Array<object>} peptideData Peptide rows containing `diff` values.
+ * @returns {{minimum: object|null, maximum: object|null}} The two extreme rows.
+ */
+export const getWoodsPlotExtrema = (peptideData) => peptideData.reduce((extrema, peptide) => {
+    if (peptide.diff == null || peptide.diff === '') return extrema;
+
+    const diff = Number(peptide.diff);
+    if (!Number.isFinite(diff)) return extrema;
+
+    return {
+        minimum: !extrema.minimum || diff < Number(extrema.minimum.diff) ? peptide : extrema.minimum,
+        maximum: !extrema.maximum || diff > Number(extrema.maximum.diff) ? peptide : extrema.maximum,
+    };
+}, { minimum: null, maximum: null });
 
 /**
  * Maps log2FC values onto the fixed Woods plot pixel height. SVG coordinates
  * increase downwards, so the positive end of the domain maps to the top margin.
  *
- * @param {[number, number]} domain Symmetric log2FC domain.
+ * @param {[number, number]} domain Global log2FC domain.
  * @returns {(value: number) => number} A log2FC-to-pixel conversion function.
  */
 export const createWoodsPlotYScale = ([domainMinimum, domainMaximum]) => {
@@ -71,25 +100,32 @@ const getRangeValue = (detail, attribute, fallback) => {
 
 /**
  * Renders the Woods plot track and keeps its visible protein region synchronized
- * with the surrounding Nightingale manager. This initial version displays the
- * current residue boundaries and inclusive range as text; later plot rendering
- * can use the same `displayRange` state to position peptide rectangles.
+ * with the surrounding Nightingale manager. Peptides from the selected comparison
+ * are positioned by their sequence coordinates and log2FC values.
  *
  * @param {object} props The component properties.
  * @param {number} props.length The protein sequence length in amino-acid residues.
  * It defines the initial full-sequence range before navigation updates arrive.
  * @param {Array<object>} props.peptideData Peptide-level differential-abundance rows.
  * Each row identifies its comparison, peptide, sequence coordinates, log2FC, and adjusted p-value.
+ * @param {Object<string, object>} props.comparisonMetadata Comparison labels keyed by comparison ID.
  * @param {string} props.selectedComparison The comparison currently selected by the parent plot.
+ * @param {(comparisonId: string) => void} props.onComparisonSelect Selects a comparison in the parent plot.
  * @returns {React.ReactElement} The managed Woods plot custom element.
  */
-const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
+const WoodsPlot = ({
+    length,
+    peptideData = [],
+    comparisonMetadata = {},
+    selectedComparison = '',
+    onComparisonSelect,
+}) => {
     // The host reference lets this React component find the Nightingale manager
     // without coupling it to an id or to the page containing the plot.
     const elementRef = useRef(null);
 
-    // Keep Nightingale's exact (potentially fractional) boundaries for future
-    // coordinate scaling; rounding is applied only to the placeholder text.
+    // Keep Nightingale's exact (potentially fractional) boundaries for peptide
+    // clipping and horizontal coordinate scaling.
     const [displayRange, setDisplayRange] = useState({
         start: 1,
         end: length || 1,
@@ -97,6 +133,11 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
 
     const yDomain = useMemo(() => getWoodsPlotYDomain(peptideData), [peptideData]);
     const yScale = useMemo(() => createWoodsPlotYScale(yDomain), [yDomain]);
+    const extrema = useMemo(() => getWoodsPlotExtrema(peptideData), [peptideData]);
+    const comparisonCount = useMemo(() => new Set(
+        peptideData.map(({ dpx_comparison }) => dpx_comparison).filter(Boolean)
+    ).size, [peptideData]);
+    const showComparisonExtrema = comparisonCount > 1;
 
     // Keep the data on the custom-element host so the drawing layer can consume
     // it directly when SVG rendering is introduced.
@@ -104,11 +145,12 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
         if (!elementRef.current) return;
 
         elementRef.current.peptideData = peptideData;
+        elementRef.current.comparisonMetadata = comparisonMetadata;
         elementRef.current.selectedComparison = selectedComparison;
         elementRef.current.yDomain = yDomain;
         elementRef.current.yScale = yScale;
         elementRef.current.plotHeight = WOODS_PLOT_HEIGHT;
-    }, [peptideData, selectedComparison, yDomain, yScale]);
+    }, [comparisonMetadata, peptideData, selectedComparison, yDomain, yScale]);
 
     // A different sequence length means a different protein, so begin again with
     // its complete sequence until navigation provides a narrower visible range.
@@ -161,20 +203,94 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
         return () => manager.removeEventListener('change', handleDisplayRangeChange);
     }, []);
 
-    // Match the integer labels shown by Nightingale and count both end residues.
-    const displayedStart = Math.round(displayRange.start);
-    const displayedEnd = Math.round(displayRange.end);
-    const displayedLength = Math.max(0, displayedEnd - displayedStart + 1);
-    const formattedYLimit = yDomain[1].toFixed(2);
+    const formattedYMinimum = yDomain[0].toFixed(2);
+    const formattedYMaximum = yDomain[1].toFixed(2);
+    const getComparisonLabel = (peptide) => {
+        if (!peptide) return '';
+
+        const metadata = comparisonMetadata[peptide.dpx_comparison];
+        return metadata?.dose || metadata?.condition || peptide.dpx_comparison;
+    };
+    const minimumComparisonLabel = getComparisonLabel(extrema.minimum);
+    const maximumComparisonLabel = getComparisonLabel(extrema.maximum);
+    const selectExtremaComparison = (peptide) => {
+        if (typeof onComparisonSelect !== 'function' || !peptide?.dpx_comparison) return;
+
+        onComparisonSelect(peptide.dpx_comparison);
+    };
+    const handleExtremaKeyDown = (event, peptide) => {
+        if (event.key !== 'Enter' && event.key !== ' ') return;
+
+        event.preventDefault();
+        selectExtremaComparison(peptide);
+    };
+    const dispatchPeptideHighlight = (eventType, peptide, parentEvent) => {
+        const sourceElement = elementRef.current;
+        if (!sourceElement) return;
+
+        const start = Number(peptide?.pos_start);
+        const end = Number(peptide?.pos_end);
+        const isMouseOver = eventType === 'mouseover';
+        if (isMouseOver && (!Number.isFinite(start) || !Number.isFinite(end))) return;
+
+        // Nightingale managers propagate `highlight` to every managed track. Use
+        // the peptide's complete interval, including any portion outside the
+        // current viewport, and clear it when the pointer leaves the peptide.
+        sourceElement.dispatchEvent(new CustomEvent('change', {
+            detail: {
+                eventType,
+                feature: isMouseOver ? { ...peptide, start, end } : null,
+                highlight: isMouseOver ? `${start}:${end}` : undefined,
+                parentEvent: parentEvent.nativeEvent || parentEvent,
+            },
+            bubbles: true,
+            cancelable: true,
+            composed: true,
+        }));
+    };
+    const plottedPeptides = useMemo(() => {
+        const xDomainStart = displayRange.start;
+        // Nightingale display-end is inclusive, so use end + 1 as the right edge.
+        const xDomainEnd = displayRange.end + 1;
+        const xDomainSpan = xDomainEnd - xDomainStart;
+
+        if (!selectedComparison || xDomainSpan <= 0) return [];
+
+        return peptideData.flatMap((peptide, index) => {
+            if (peptide.dpx_comparison !== selectedComparison) return [];
+            if (peptide.pos_start == null || peptide.pos_end == null || peptide.diff == null) return [];
+
+            const start = Number(peptide.pos_start);
+            const end = Number(peptide.pos_end);
+            const diff = Number(peptide.diff);
+            if (!Number.isFinite(start) || !Number.isFinite(end) || !Number.isFinite(diff)) return [];
+            if (start < 1 || end < start || end < xDomainStart || start > displayRange.end) return [];
+
+            // Clamp partially visible peptides to the current horizontal viewport.
+            const visibleStart = Math.max(start, xDomainStart);
+            const visibleEnd = Math.min(end + 1, xDomainEnd);
+            const x1 = ((visibleStart - xDomainStart) / xDomainSpan) * 100;
+            const x2 = ((visibleEnd - xDomainStart) / xDomainSpan) * 100;
+
+            return [{
+                key: peptide.differential_abundance_id
+                    ?? `${peptide.dpx_comparison}-${peptide.pep_grouping_key}-${start}-${end}-${index}`,
+                peptide,
+                x1,
+                x2,
+                y: yScale(diff),
+            }];
+        });
+    }, [displayRange, peptideData, selectedComparison, yScale]);
     const yAxisTicks = [
         ...(Math.abs(yScale(yDomain[1]) - yScale(1)) >= MIN_Y_TICK_SPACING
-            ? [{ value: yDomain[1], label: `+${formattedYLimit}` }]
+            ? [{ value: yDomain[1], label: `+${formattedYMaximum}` }]
             : []),
         { value: 1, label: '+1' },
         { value: 0, label: '0' },
         { value: -1, label: '-1' },
         ...(Math.abs(yScale(-1) - yScale(yDomain[0])) >= MIN_Y_TICK_SPACING
-            ? [{ value: yDomain[0], label: `-${formattedYLimit}` }]
+            ? [{ value: yDomain[0], label: formattedYMinimum }]
             : []),
     ];
 
@@ -183,9 +299,8 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
             ref={elementRef}
             style={{ display: 'block', lineHeight: 'normal', marginTop: '24px' }}
         >
-            <div>Woods plot — position: {displayedStart}–{displayedEnd}; range: {displayedLength} residues</div>
             <svg
-                aria-label={`Woods plot with log2FC axis from -${formattedYLimit} to +${formattedYLimit}`}
+                aria-label={`Woods plot with log2FC axis from ${formattedYMinimum} to +${formattedYMaximum}`}
                 height={WOODS_PLOT_HEIGHT}
                 role="img"
                 style={{ display: 'block', width: '100%' }}
@@ -219,6 +334,24 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
                     strokeDasharray="6 4"
                 />
 
+                {plottedPeptides.map(({ key, peptide, x1, x2, y }) => (
+                    <line
+                        className="woods-plot-peptide"
+                        data-comparison={peptide.dpx_comparison}
+                        data-peptide={peptide.pep_grouping_key || ''}
+                        key={key}
+                        onMouseOut={(event) => dispatchPeptideHighlight('mouseout', peptide, event)}
+                        onMouseOver={(event) => dispatchPeptideHighlight('mouseover', peptide, event)}
+                        stroke={Number(peptide.diff) < 0 ? NEGATIVE_PEPTIDE_COLOR : POSITIVE_PEPTIDE_COLOR}
+                        strokeLinecap="butt"
+                        strokeWidth="5"
+                        x1={`${x1}%`}
+                        x2={`${x2}%`}
+                        y1={y}
+                        y2={y}
+                    />
+                ))}
+
                 <line
                     className="woods-plot-y-axis"
                     x1="1"
@@ -227,9 +360,45 @@ const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
                     y2={yScale(yDomain[0])}
                     stroke="#000"
                 />
-                <text className="woods-plot-y-axis-label" fill="#000" fontSize="11" x="9" y="12">
-                    log2FC
-                </text>
+                {showComparisonExtrema && extrema.maximum && (
+                    <text
+                        aria-label={`Select highest comparison: ${maximumComparisonLabel}`}
+                        className="woods-plot-maximum-comparison"
+                        fill={POSITIVE_PEPTIDE_COLOR}
+                        fontSize="11"
+                        onClick={() => selectExtremaComparison(extrema.maximum)}
+                        onKeyDown={(event) => handleExtremaKeyDown(event, extrema.maximum)}
+                        role="button"
+                        style={{ cursor: 'pointer' }}
+                        tabIndex="0"
+                        textAnchor="end"
+                        x="99%"
+                        y="12"
+                    >
+                        <tspan style={{ textDecoration: 'underline' }}>Highest</tspan>
+                        : {maximumComparisonLabel} ({Number(extrema.maximum.diff).toFixed(2)})
+                    </text>
+                )}
+                {showComparisonExtrema && extrema.minimum && (
+                    <text
+                        aria-label={`Select lowest comparison: ${minimumComparisonLabel}`}
+                        className="woods-plot-minimum-comparison"
+                        dominantBaseline="text-after-edge"
+                        fill={NEGATIVE_PEPTIDE_COLOR}
+                        fontSize="11"
+                        onClick={() => selectExtremaComparison(extrema.minimum)}
+                        onKeyDown={(event) => handleExtremaKeyDown(event, extrema.minimum)}
+                        role="button"
+                        style={{ cursor: 'pointer' }}
+                        tabIndex="0"
+                        textAnchor="end"
+                        x="99%"
+                        y={WOODS_PLOT_HEIGHT - 2}
+                    >
+                        <tspan style={{ textDecoration: 'underline' }}>Lowest</tspan>
+                        : {minimumComparisonLabel} ({Number(extrema.minimum.diff).toFixed(2)})
+                    </text>
+                )}
                 {yAxisTicks.map(({ value, label }) => (
                     <g className="woods-plot-y-tick" key={value} transform={`translate(0 ${yScale(value)})`}>
                         <line x1="1" x2="6" y1="0" y2="0" stroke="#000" />

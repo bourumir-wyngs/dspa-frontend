@@ -51,10 +51,10 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
-import WoodsPlot, { getWoodsPlotYDomain } from '../WoodsPlot';
+import WoodsPlot, { getWoodsPlotExtrema, getWoodsPlotYDomain } from '../WoodsPlot';
 
 describe('WoodsPlot vertical scaling', () => {
-    it('builds a padded symmetric domain from the largest absolute log2FC', () => {
+    it('builds padded negative and positive limits from all log2FC values', () => {
         const domain = getWoodsPlotYDomain([
             { diff: 2 },
             { diff: -4 },
@@ -63,7 +63,7 @@ describe('WoodsPlot vertical scaling', () => {
         ]);
 
         expect(domain[0]).toBeCloseTo(-4.4);
-        expect(domain[1]).toBeCloseTo(4.4);
+        expect(domain[1]).toBeCloseTo(2.2);
     });
 
     it('keeps the +/-1 cutoffs visible when no larger values exist', () => {
@@ -71,6 +71,19 @@ describe('WoodsPlot vertical scaling', () => {
 
         expect(domain[0]).toBeCloseTo(-1.1);
         expect(domain[1]).toBeCloseTo(1.1);
+    });
+
+    it('identifies the rows that set the lower and upper limits', () => {
+        const peptideData = [
+            { dpx_comparison: 'middle', diff: 0.5 },
+            { dpx_comparison: 'lowest', diff: -3 },
+            { dpx_comparison: 'highest', diff: 2 },
+        ];
+
+        expect(getWoodsPlotExtrema(peptideData)).toEqual({
+            minimum: peptideData[1],
+            maximum: peptideData[2],
+        });
     });
 });
 
@@ -440,7 +453,8 @@ describe('NightingaleComponent Rendering', () => {
             { experimentID: 'exp2', data: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10] }
         ],
         experimentMetaData: [
-            { dpx_comparison: 'exp1', condition: 'CondA', dose: '10uM' }
+            { dpx_comparison: 'exp1', condition: 'CondA', dose: '10uM' },
+            { dpx_comparison: 'exp2', condition: 'CondB' }
         ],
         differentialAbundanceData: {
             'exp1': [{ index: 0, score: 5 }]
@@ -491,28 +505,48 @@ describe('NightingaleComponent Rendering', () => {
 
         const managedRows = Array.from(container.querySelectorAll('nightingale-manager tbody > tr'));
         const woodsPlot = managedRows.at(-1).querySelector('nightingale-woods-plot');
-        expect(woodsPlot).toHaveTextContent('Woods plot — position: 1–10; range: 10 residues');
+        expect(managedRows.at(-1).cells[0]).toHaveTextContent('Woods plotlog2FC');
+        expect(woodsPlot).not.toHaveTextContent('Position:');
         expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
         expect(woodsPlot.peptideData).toEqual(mockProteinData.peptideLevelData);
-        expect(woodsPlot.yDomain[0]).toBeCloseTo(-1.65);
+        expect(woodsPlot.yDomain[0]).toBeCloseTo(-1.375);
         expect(woodsPlot.yDomain[1]).toBeCloseTo(1.65);
         expect(woodsPlot.yScale(woodsPlot.yDomain[1])).toBe(20);
-        expect(woodsPlot.yScale(0)).toBe(155);
+        expect(woodsPlot.yScale(0)).toBeCloseTo(167.27);
         expect(woodsPlot.yScale(woodsPlot.yDomain[0])).toBe(290);
 
         const svg = woodsPlot.querySelector('svg');
         expect(svg).toHaveAttribute('height', '320');
-        expect(svg).toHaveAccessibleName('Woods plot with log2FC axis from -1.65 to +1.65');
+        expect(svg).toHaveAccessibleName('Woods plot with log2FC axis from -1.38 to +1.65');
         expect(svg.querySelectorAll('.woods-plot-y-tick')).toHaveLength(5);
-        expect(svg.querySelector('.woods-plot-zero-line')).toHaveAttribute('y1', '155');
+        expect(svg.querySelector('.woods-plot-maximum-comparison'))
+            .toHaveTextContent('Highest: 10uM (1.50)');
+        expect(svg.querySelector('.woods-plot-minimum-comparison'))
+            .toHaveTextContent('Lowest: CondB (-1.25)');
+        expect(svg.querySelector('.woods-plot-maximum-comparison')).toHaveStyle({ cursor: 'pointer' });
+        expect(svg.querySelector('.woods-plot-maximum-comparison')).not.toHaveStyle({ textDecoration: 'underline' });
+        expect(svg.querySelector('.woods-plot-maximum-comparison tspan'))
+            .toHaveStyle({ textDecoration: 'underline' });
+        expect(svg.querySelector('.woods-plot-minimum-comparison tspan'))
+            .toHaveStyle({ textDecoration: 'underline' });
+        expect(Number(svg.querySelector('.woods-plot-zero-line').getAttribute('y1')))
+            .toBeCloseTo(woodsPlot.yScale(0));
         expect(Number(svg.querySelector('.woods-plot-cutoff-positive').getAttribute('y1')))
             .toBeCloseTo(woodsPlot.yScale(1));
         expect(Number(svg.querySelector('.woods-plot-cutoff-negative').getAttribute('y1')))
             .toBeCloseTo(woodsPlot.yScale(-1));
         await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+
+        const peptideLine = svg.querySelector('.woods-plot-peptide');
+        expect(svg.querySelectorAll('.woods-plot-peptide')).toHaveLength(1);
+        expect(peptideLine).toHaveAttribute('stroke', '#003f5c');
+        expect(peptideLine).toHaveAttribute('stroke-width', '5');
+        expect(peptideLine).toHaveAttribute('x1', '0%');
+        expect(peptideLine).toHaveAttribute('x2', '50%');
+        expect(Number(peptideLine.getAttribute('y1'))).toBeCloseTo(woodsPlot.yScale(1.5));
     });
 
-    it('updates the Woods plot range when managed navigation changes', () => {
+    it('updates the Woods plot range and clips peptide lines when managed navigation changes', async () => {
         const { container } = render(
             <NightingaleComponent
                 proteinData={mockProteinData}
@@ -524,13 +558,158 @@ describe('NightingaleComponent Rendering', () => {
 
         const manager = container.querySelector('nightingale-manager');
         const woodsPlot = container.querySelector('nightingale-woods-plot');
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
 
         fireEvent(manager, new CustomEvent('change', {
             detail: { 'display-start': 3, 'display-end': 7 },
             bubbles: true,
         }));
 
-        expect(woodsPlot).toHaveTextContent('Woods plot — position: 3–7; range: 5 residues');
+        expect(woodsPlot).not.toHaveTextContent('Position:');
+        const peptideLine = woodsPlot.querySelector('.woods-plot-peptide');
+        expect(peptideLine).toHaveAttribute('x1', '0%');
+        expect(Number.parseFloat(peptideLine.getAttribute('x2'))).toBeCloseTo(60);
+    });
+
+    it('zooms the shared range when the navigation ruler receives a wheel event', () => {
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={mockProteinData}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+            />
+        );
+
+        const navigation = container.querySelector('nightingale-navigation');
+        navigation.zoomIn = jest.fn();
+        navigation.zoomOut = jest.fn();
+        const zoomInEvent = new WheelEvent('wheel', {
+            bubbles: true,
+            cancelable: true,
+            deltaY: -100,
+        });
+
+        fireEvent(navigation, zoomInEvent);
+
+        expect(zoomInEvent.defaultPrevented).toBe(true);
+        expect(navigation.zoomIn).toHaveBeenCalledTimes(1);
+        expect(navigation.zoomOut).not.toHaveBeenCalled();
+
+        fireEvent.wheel(navigation, { deltaY: 100 });
+        expect(navigation.zoomOut).toHaveBeenCalledTimes(1);
+    });
+
+    it('propagates a hovered Woods peptide region to the managed tracks', async () => {
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={mockProteinData}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+            />
+        );
+
+        const manager = container.querySelector('nightingale-manager');
+        const woodsPlot = container.querySelector('nightingale-woods-plot');
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+
+        const highlightEvents = [];
+        manager.addEventListener('change', (event) => {
+            if (event.detail?.eventType === 'mouseover' || event.detail?.eventType === 'mouseout') {
+                highlightEvents.push(event.detail);
+            }
+        });
+
+        const peptideLine = woodsPlot.querySelector('.woods-plot-peptide');
+        fireEvent.mouseOver(peptideLine);
+        expect(highlightEvents.at(-1)).toMatchObject({
+            eventType: 'mouseover',
+            highlight: '1:5',
+            feature: {
+                dpx_comparison: 'exp1',
+                start: 1,
+                end: 5,
+            },
+        });
+
+        fireEvent.mouseOut(peptideLine);
+        expect(highlightEvents.at(-1)).toMatchObject({
+            eventType: 'mouseout',
+            feature: null,
+        });
+        expect(highlightEvents.at(-1)).toHaveProperty('highlight', undefined);
+    });
+
+    it('selects the comparison represented by a Woods plot extrema label', async () => {
+        const proteinDataWithThreeComparisons = {
+            ...mockProteinData,
+            experimentIDsList: [...mockProteinData.experimentIDsList, 'exp3'],
+            experimentMetaData: [
+                ...mockProteinData.experimentMetaData,
+                { dpx_comparison: 'exp3', condition: 'CondC', dose: '30uM' },
+            ],
+            peptideLevelData: [
+                ...mockProteinData.peptideLevelData,
+                {
+                    differential_abundance_id: 3,
+                    dpx_comparison: 'exp3',
+                    pg_protein_accessions: 'P12345',
+                    pep_grouping_key: '_LSPAD_',
+                    pos_start: 3,
+                    pos_end: 7,
+                    diff: 0.5,
+                    adj_pval: 0.03,
+                },
+            ],
+        };
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={proteinDataWithThreeComparisons}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+            />
+        );
+
+        const woodsPlot = container.querySelector('nightingale-woods-plot');
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+
+        fireEvent.click(woodsPlot.querySelector('.woods-plot-minimum-comparison tspan'));
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp2'));
+        expect(woodsPlot.querySelector('.woods-plot-peptide'))
+            .toHaveAttribute('data-comparison', 'exp2');
+
+        fireEvent.keyDown(woodsPlot.querySelector('.woods-plot-maximum-comparison'), { key: 'Enter' });
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+        expect(woodsPlot.querySelector('.woods-plot-peptide'))
+            .toHaveAttribute('data-comparison', 'exp1');
+    });
+
+    it('hides Woods plot extrema labels when only one comparison is available', async () => {
+        const singleComparisonProteinData = {
+            ...mockProteinData,
+            experimentIDsList: ['exp1'],
+            experimentMetaData: mockProteinData.experimentMetaData.filter(
+                ({ dpx_comparison }) => dpx_comparison === 'exp1'
+            ),
+            peptideLevelData: mockProteinData.peptideLevelData.filter(
+                ({ dpx_comparison }) => dpx_comparison === 'exp1'
+            ),
+        };
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={singleComparisonProteinData}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+            />
+        );
+
+        const woodsPlot = container.querySelector('nightingale-woods-plot');
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+        expect(woodsPlot.querySelector('.woods-plot-maximum-comparison')).toBeNull();
+        expect(woodsPlot.querySelector('.woods-plot-minimum-comparison')).toBeNull();
     });
 
     it('initializes the Woods plot from an existing navigation range', () => {
@@ -542,7 +721,7 @@ describe('NightingaleComponent Rendering', () => {
         );
 
         expect(container.querySelector('nightingale-woods-plot'))
-            .toHaveTextContent('Woods plot — position: 4–8; range: 5 residues');
+            .not.toHaveTextContent('Position:');
         expect(container.querySelectorAll('.woods-plot-y-tick')).toHaveLength(3);
     });
 
@@ -707,6 +886,9 @@ describe('NightingaleComponent Rendering', () => {
             const woodsPlot = container.querySelector('nightingale-woods-plot');
             expect(woodsPlot.peptideData).toEqual([mockProteinData.peptideLevelData[1]]);
             await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp2'));
+            expect(woodsPlot.querySelectorAll('.woods-plot-peptide')).toHaveLength(1);
+            expect(woodsPlot.querySelector('.woods-plot-peptide')).toHaveAttribute('data-comparison', 'exp2');
+            expect(woodsPlot.querySelector('.woods-plot-peptide')).toHaveAttribute('stroke', '#8b0000');
         });
 
         it('falls back to proteinData.experimentIDsList', () => {
