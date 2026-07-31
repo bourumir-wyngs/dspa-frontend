@@ -434,7 +434,7 @@ describe('NightingaleComponent Rendering', () => {
     };
 
     it('renders without crashing with minimal props', () => {
-        render(
+        const { container } = render(
             <NightingaleComponent 
                 proteinData={mockProteinData}
                 pdbIds={[]}
@@ -444,6 +444,11 @@ describe('NightingaleComponent Rendering', () => {
         );
         expect(screen.getByText('Test Protein')).toBeInTheDocument();
         expect(screen.getByText('Selected PDB ID: 1XYZ')).toBeInTheDocument();
+
+        const managedRows = Array.from(container.querySelectorAll('nightingale-manager tbody > tr'));
+        const woodsPlot = managedRows.at(-1).querySelector('nightingale-woods-plot');
+        expect(woodsPlot).toHaveTextContent('Woods plot');
+        expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
     });
 
     it('splits heatmap when masterCondition is provided', () => {

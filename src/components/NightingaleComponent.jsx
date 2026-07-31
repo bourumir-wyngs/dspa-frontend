@@ -10,6 +10,7 @@ import "@nightingale-elements/nightingale-sequence-heatmap";
 import "@dspa-nightingale/nightingale-structure";
 import { LIP_SCALE as LIP_COLOR_SCALE } from "@dspa-nightingale/nightingale-structure";
 import "@dspa-nightingale/nightingale-track";
+import WoodsPlot from './WoodsPlot.jsx';
 
 
 // Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
@@ -1316,6 +1317,10 @@ const NightingaleComponent = ({
                             </tr>
                         )}
 
+                        <tr>
+                            <td></td>
+                            <td><WoodsPlot /></td>
+                        </tr>
 
                     </tbody>
                 </table>
