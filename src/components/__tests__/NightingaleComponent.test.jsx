@@ -51,6 +51,7 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
+import WoodsPlot from '../WoodsPlot';
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -447,8 +448,41 @@ describe('NightingaleComponent Rendering', () => {
 
         const managedRows = Array.from(container.querySelectorAll('nightingale-manager tbody > tr'));
         const woodsPlot = managedRows.at(-1).querySelector('nightingale-woods-plot');
-        expect(woodsPlot).toHaveTextContent('Woods plot');
+        expect(woodsPlot).toHaveTextContent('Woods plot — position: 1–10; range: 10 residues');
         expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
+    });
+
+    it('updates the Woods plot range when managed navigation changes', () => {
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={mockProteinData}
+                pdbIds={[]}
+                selectedPdbId={null}
+                setSelectedPdbId={() => {}}
+            />
+        );
+
+        const manager = container.querySelector('nightingale-manager');
+        const woodsPlot = container.querySelector('nightingale-woods-plot');
+
+        fireEvent(manager, new CustomEvent('change', {
+            detail: { 'display-start': 3, 'display-end': 7 },
+            bubbles: true,
+        }));
+
+        expect(woodsPlot).toHaveTextContent('Woods plot — position: 3–7; range: 5 residues');
+    });
+
+    it('initializes the Woods plot from an existing navigation range', () => {
+        const { container } = render(
+            <nightingale-manager>
+                <nightingale-navigation display-start="4" display-end="8" />
+                <WoodsPlot length={10} />
+            </nightingale-manager>
+        );
+
+        expect(container.querySelector('nightingale-woods-plot'))
+            .toHaveTextContent('Woods plot — position: 4–8; range: 5 residues');
     });
 
     it('splits heatmap when masterCondition is provided', () => {
