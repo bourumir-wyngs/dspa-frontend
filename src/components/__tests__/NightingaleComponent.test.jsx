@@ -51,7 +51,28 @@ import React from 'react';
 import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import '@testing-library/jest-dom';
 import NightingaleComponent, { getLipScoreColor, buildHeatmapRows, createHeatmapDataset, getHeatmapTooltip, getSequencePositionForTrackEvent, getSequencePositionForHeatmapEvent, applyExactTrackBaseWidth, refreshNightingaleDimensions, relayHeatmapHighlightEvent, dispatchHeatmapHoverHighlightEvent } from '../NightingaleComponent';
-import WoodsPlot from '../WoodsPlot';
+import WoodsPlot, { getWoodsPlotYDomain } from '../WoodsPlot';
+
+describe('WoodsPlot vertical scaling', () => {
+    it('builds a padded symmetric domain from the largest absolute log2FC', () => {
+        const domain = getWoodsPlotYDomain([
+            { diff: 2 },
+            { diff: -4 },
+            { diff: null },
+            { diff: 'invalid' },
+        ]);
+
+        expect(domain[0]).toBeCloseTo(-4.4);
+        expect(domain[1]).toBeCloseTo(4.4);
+    });
+
+    it('keeps the +/-1 cutoffs visible when no larger values exist', () => {
+        const domain = getWoodsPlotYDomain([{ diff: 0.25 }]);
+
+        expect(domain[0]).toBeCloseTo(-1.1);
+        expect(domain[1]).toBeCloseTo(1.1);
+    });
+});
 
 describe('NightingaleComponent Utilities', () => {
     describe('getLipScoreColor', () => {
@@ -473,6 +494,21 @@ describe('NightingaleComponent Rendering', () => {
         expect(woodsPlot).toHaveTextContent('Woods plot — position: 1–10; range: 10 residues');
         expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
         expect(woodsPlot.peptideData).toEqual(mockProteinData.peptideLevelData);
+        expect(woodsPlot.yDomain[0]).toBeCloseTo(-1.65);
+        expect(woodsPlot.yDomain[1]).toBeCloseTo(1.65);
+        expect(woodsPlot.yScale(woodsPlot.yDomain[1])).toBe(20);
+        expect(woodsPlot.yScale(0)).toBe(155);
+        expect(woodsPlot.yScale(woodsPlot.yDomain[0])).toBe(290);
+
+        const svg = woodsPlot.querySelector('svg');
+        expect(svg).toHaveAttribute('height', '320');
+        expect(svg).toHaveAccessibleName('Woods plot with log2FC axis from -1.65 to +1.65');
+        expect(svg.querySelectorAll('.woods-plot-y-tick')).toHaveLength(5);
+        expect(svg.querySelector('.woods-plot-zero-line')).toHaveAttribute('y1', '155');
+        expect(Number(svg.querySelector('.woods-plot-cutoff-positive').getAttribute('y1')))
+            .toBeCloseTo(woodsPlot.yScale(1));
+        expect(Number(svg.querySelector('.woods-plot-cutoff-negative').getAttribute('y1')))
+            .toBeCloseTo(woodsPlot.yScale(-1));
         await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
     });
 
@@ -507,6 +543,7 @@ describe('NightingaleComponent Rendering', () => {
 
         expect(container.querySelector('nightingale-woods-plot'))
             .toHaveTextContent('Woods plot — position: 4–8; range: 5 residues');
+        expect(container.querySelectorAll('.woods-plot-y-tick')).toHaveLength(3);
     });
 
     it('splits heatmap when masterCondition is provided', () => {

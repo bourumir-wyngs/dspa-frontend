@@ -1332,7 +1332,7 @@ const NightingaleComponent = ({
                         )}
 
                         <tr>
-                            <td></td>
+                            <td>Woods plot</td>
                             <td>
                                 <WoodsPlot
                                     length={featureSequenceLength}
