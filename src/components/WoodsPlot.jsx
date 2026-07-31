@@ -31,9 +31,12 @@ const getRangeValue = (detail, attribute, fallback) => {
  * @param {object} props The component properties.
  * @param {number} props.length The protein sequence length in amino-acid residues.
  * It defines the initial full-sequence range before navigation updates arrive.
+ * @param {Array<object>} props.peptideData Peptide-level differential-abundance rows.
+ * Each row identifies its comparison, peptide, sequence coordinates, log2FC, and adjusted p-value.
+ * @param {string} props.selectedComparison The comparison currently selected by the parent plot.
  * @returns {React.ReactElement} The managed Woods plot custom element.
  */
-const WoodsPlot = ({ length }) => {
+const WoodsPlot = ({ length, peptideData = [], selectedComparison = '' }) => {
     // The host reference lets this React component find the Nightingale manager
     // without coupling it to an id or to the page containing the plot.
     const elementRef = useRef(null);
@@ -44,6 +47,15 @@ const WoodsPlot = ({ length }) => {
         start: 1,
         end: length || 1,
     });
+
+    // Keep the data on the custom-element host so the drawing layer can consume
+    // it directly when SVG rendering is introduced.
+    useEffect(() => {
+        if (!elementRef.current) return;
+
+        elementRef.current.peptideData = peptideData;
+        elementRef.current.selectedComparison = selectedComparison;
+    }, [peptideData, selectedComparison]);
 
     // A different sequence length means a different protein, so begin again with
     // its complete sequence until navigation provides a narrower visible range.

@@ -424,6 +424,28 @@ describe('NightingaleComponent Rendering', () => {
         differentialAbundanceData: {
             'exp1': [{ index: 0, score: 5 }]
         },
+        peptideLevelData: [
+            {
+                differential_abundance_id: 1,
+                dpx_comparison: 'exp1',
+                pg_protein_accessions: 'P12345',
+                pep_grouping_key: '_MVLSP_',
+                pos_start: 1,
+                pos_end: 5,
+                diff: 1.5,
+                adj_pval: 0.01,
+            },
+            {
+                differential_abundance_id: 2,
+                dpx_comparison: 'exp2',
+                pg_protein_accessions: 'P12345',
+                pep_grouping_key: '_ADKTN_',
+                pos_start: 6,
+                pos_end: 10,
+                diff: -1.25,
+                adj_pval: 0.02,
+            },
+        ],
         featuresData: {
             sequence: 'MVLSPADKTN',
             features: [
@@ -434,7 +456,7 @@ describe('NightingaleComponent Rendering', () => {
         barcodeSequence: {}
     };
 
-    it('renders without crashing with minimal props', () => {
+    it('renders without crashing with minimal props', async () => {
         const { container } = render(
             <NightingaleComponent 
                 proteinData={mockProteinData}
@@ -450,6 +472,8 @@ describe('NightingaleComponent Rendering', () => {
         const woodsPlot = managedRows.at(-1).querySelector('nightingale-woods-plot');
         expect(woodsPlot).toHaveTextContent('Woods plot — position: 1–10; range: 10 residues');
         expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
+        expect(woodsPlot.peptideData).toEqual(mockProteinData.peptideLevelData);
+        await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
     });
 
     it('updates the Woods plot range when managed navigation changes', () => {
@@ -629,8 +653,8 @@ describe('NightingaleComponent Rendering', () => {
     });
 
     describe('Experiment Fallbacks & Controls', () => {
-        it('uses passedExperimentIDs when valid', () => {
-            render(
+        it('uses passedExperimentIDs when valid', async () => {
+            const { container } = render(
                 <NightingaleComponent 
                     proteinData={mockProteinData}
                     passedExperimentIDs={['exp2']}
@@ -642,6 +666,10 @@ describe('NightingaleComponent Rendering', () => {
             // exp2 button should be present and selected
             const button = screen.getByText('Experiment exp2');
             expect(button).toHaveClass('selected');
+
+            const woodsPlot = container.querySelector('nightingale-woods-plot');
+            expect(woodsPlot.peptideData).toEqual([mockProteinData.peptideLevelData[1]]);
+            await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp2'));
         });
 
         it('falls back to proteinData.experimentIDsList', () => {

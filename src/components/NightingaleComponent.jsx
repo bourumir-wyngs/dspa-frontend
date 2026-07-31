@@ -529,6 +529,20 @@ const NightingaleComponent = ({
         return mapping;
     }, [proteinData.experimentMetaData]);
 
+    // Limit Woods plot input to comparisons available in this view. Protein pages
+    // include every comparison, while condition pages pass a smaller applicable
+    // comparison list. useMemo avoids filtering a potentially large peptide array
+    // on unrelated renders and keeps the prop reference stable; it is recomputed
+    // only when the source peptide rows or applicable comparison IDs change.
+    const woodsPlotPeptideData = useMemo(() => {
+        const peptideLevelData = Array.isArray(proteinData.peptideLevelData)
+            ? proteinData.peptideLevelData
+            : [];
+        const includedComparisons = new Set(experimentIDsList);
+
+        return peptideLevelData.filter(({ dpx_comparison }) => includedComparisons.has(dpx_comparison));
+    }, [experimentIDsList, proteinData.peptideLevelData]);
+
     const [trackHeight, setTrackHeight] = useState(null);
     const lastLayoutHeightsRef = useRef({ structureHeight: null, trackHeight: null });
 
@@ -1319,7 +1333,13 @@ const NightingaleComponent = ({
 
                         <tr>
                             <td></td>
-                            <td><WoodsPlot length={featureSequenceLength} /></td>
+                            <td>
+                                <WoodsPlot
+                                    length={featureSequenceLength}
+                                    peptideData={woodsPlotPeptideData}
+                                    selectedComparison={selectedExperiment}
+                                />
+                            </td>
                         </tr>
 
                     </tbody>
