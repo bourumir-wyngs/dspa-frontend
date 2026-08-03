@@ -506,7 +506,8 @@ describe('NightingaleComponent Rendering', () => {
         const managedRows = Array.from(container.querySelectorAll('nightingale-manager tbody > tr'));
         const woodsPlot = managedRows.at(-1).querySelector('nightingale-woods-plot');
         expect(managedRows.at(-1).cells[0]).toHaveTextContent('Woods plotlog2FC');
-        expect(woodsPlot).not.toHaveTextContent('Position:');
+        expect(Array.from(woodsPlot.querySelectorAll('text'))
+            .some((element) => element.textContent.includes('Position:'))).toBe(false);
         expect(woodsPlot).toHaveStyle({ display: 'block', lineHeight: 'normal', marginTop: '24px' });
         expect(woodsPlot.peptideData).toEqual(mockProteinData.peptideLevelData);
         expect(woodsPlot.yDomain[0]).toBeCloseTo(-1.375);
@@ -544,6 +545,76 @@ describe('NightingaleComponent Rendering', () => {
         expect(peptideLine).toHaveAttribute('x1', '0%');
         expect(peptideLine).toHaveAttribute('x2', '50%');
         expect(Number(peptideLine.getAttribute('y1'))).toBeCloseTo(woodsPlot.yScale(1.5));
+        expect(peptideLine.querySelector('title')).toHaveTextContent('Peptide: _MVLSP_');
+        expect(peptideLine.querySelector('title')).toHaveTextContent('Position: 1–5');
+        expect(peptideLine.querySelector('title')).toHaveTextContent('log2FC: 1.5');
+        expect(peptideLine.querySelector('title')).toHaveTextContent('Adjusted p-value: 0.01');
+        expect(peptideLine.querySelector('title'))
+            .toHaveTextContent('Significant (adjusted p-value < 0.05): Yes');
+    });
+
+    it('draws peptides without adjusted-p-value significance in gray', () => {
+        const peptideData = [
+            {
+                differential_abundance_id: 1,
+                dpx_comparison: 'exp1',
+                pep_grouping_key: 'significant',
+                pos_start: 1,
+                pos_end: 2,
+                diff: 1.5,
+                adj_pval: 0.049,
+            },
+            {
+                differential_abundance_id: 2,
+                dpx_comparison: 'exp1',
+                pep_grouping_key: 'at-cutoff',
+                pos_start: 3,
+                pos_end: 4,
+                diff: -1.5,
+                adj_pval: 0.05,
+            },
+            {
+                differential_abundance_id: 3,
+                dpx_comparison: 'exp1',
+                pep_grouping_key: 'missing',
+                pos_start: 5,
+                pos_end: 6,
+                diff: 0.5,
+                adj_pval: null,
+            },
+            {
+                differential_abundance_id: 4,
+                dpx_comparison: 'exp1',
+                pep_grouping_key: 'invalid',
+                pos_start: 7,
+                pos_end: 8,
+                diff: -0.5,
+                adj_pval: 'invalid',
+            },
+        ];
+        const { container } = render(
+            <nightingale-manager>
+                <WoodsPlot
+                    length={8}
+                    peptideData={peptideData}
+                    selectedComparison="exp1"
+                />
+            </nightingale-manager>
+        );
+        const woodsPlot = container.querySelector('nightingale-woods-plot');
+
+        expect(woodsPlot.querySelector('[data-peptide="significant"]'))
+            .toHaveAttribute('stroke', '#003f5c');
+        expect(woodsPlot.querySelector('[data-peptide="at-cutoff"]'))
+            .toHaveAttribute('stroke', '#6b7280');
+        expect(woodsPlot.querySelector('[data-peptide="missing"]'))
+            .toHaveAttribute('stroke', '#6b7280');
+        expect(woodsPlot.querySelector('[data-peptide="missing"] title'))
+            .toHaveTextContent('Adjusted p-value: Not available');
+        expect(woodsPlot.querySelector('[data-peptide="missing"] title'))
+            .toHaveTextContent('Significant (adjusted p-value < 0.05): No');
+        expect(woodsPlot.querySelector('[data-peptide="invalid"]'))
+            .toHaveAttribute('stroke', '#6b7280');
     });
 
     it('updates the Woods plot range and clips peptide lines when managed navigation changes', async () => {
@@ -565,7 +636,8 @@ describe('NightingaleComponent Rendering', () => {
             bubbles: true,
         }));
 
-        expect(woodsPlot).not.toHaveTextContent('Position:');
+        expect(Array.from(woodsPlot.querySelectorAll('text'))
+            .some((element) => element.textContent.includes('Position:'))).toBe(false);
         const peptideLine = woodsPlot.querySelector('.woods-plot-peptide');
         expect(peptideLine).toHaveAttribute('x1', '0%');
         expect(Number.parseFloat(peptideLine.getAttribute('x2'))).toBeCloseTo(60);

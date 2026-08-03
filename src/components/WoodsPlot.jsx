@@ -6,8 +6,49 @@ const WOODS_PLOT_BOTTOM_MARGIN = 30;
 const MIN_ABSOLUTE_LOG2FC = 1;
 const Y_DOMAIN_PADDING_FACTOR = 1.1;
 const MIN_Y_TICK_SPACING = 16;
+const ADJUSTED_P_VALUE_SIGNIFICANCE_CUTOFF = 0.05;
 const POSITIVE_PEPTIDE_COLOR = '#003f5c';
 const NEGATIVE_PEPTIDE_COLOR = '#8b0000';
+const NON_SIGNIFICANT_PEPTIDE_COLOR = '#6b7280';
+
+const isPeptideSignificant = ({ adj_pval: adjustedPValue }) => {
+    const hasAdjustedPValue = adjustedPValue != null
+        && !(typeof adjustedPValue === 'string' && adjustedPValue.trim() === '');
+    const numericAdjustedPValue = Number(adjustedPValue);
+
+    return hasAdjustedPValue
+        && Number.isFinite(numericAdjustedPValue)
+        && numericAdjustedPValue >= 0
+        && numericAdjustedPValue < ADJUSTED_P_VALUE_SIGNIFICANCE_CUTOFF;
+};
+
+/**
+ * Uses adjusted-p-value significance before the direction of the fold change.
+ * Missing, invalid, and out-of-range adjusted p-values cannot establish
+ * significance and therefore use the non-significant color.
+ *
+ * @param {object} peptide A peptide-level differential-abundance row.
+ * @returns {string} The SVG stroke color for the peptide.
+ */
+const getPeptideColor = (peptide) => {
+    if (!isPeptideSignificant(peptide)) return NON_SIGNIFICANT_PEPTIDE_COLOR;
+
+    return Number(peptide.diff) < 0 ? NEGATIVE_PEPTIDE_COLOR : POSITIVE_PEPTIDE_COLOR;
+};
+
+const formatPeptideValue = (value) => (
+    value == null || (typeof value === 'string' && value.trim() === '')
+        ? 'Not available'
+        : String(value)
+);
+
+const getPeptideTooltipText = (peptide) => [
+    `Peptide: ${formatPeptideValue(peptide.pep_grouping_key)}`,
+    `Position: ${peptide.pos_start}–${peptide.pos_end}`,
+    `log2FC: ${peptide.diff}`,
+    `Adjusted p-value: ${formatPeptideValue(peptide.adj_pval)}`,
+    `Significant (adjusted p-value < ${ADJUSTED_P_VALUE_SIGNIFICANCE_CUTOFF}): ${isPeptideSignificant(peptide) ? 'Yes' : 'No'}`,
+].join('\n');
 
 /**
  * Calculates the global log2FC domain for every comparison available to the
@@ -342,14 +383,16 @@ const WoodsPlot = ({
                         key={key}
                         onMouseOut={(event) => dispatchPeptideHighlight('mouseout', peptide, event)}
                         onMouseOver={(event) => dispatchPeptideHighlight('mouseover', peptide, event)}
-                        stroke={Number(peptide.diff) < 0 ? NEGATIVE_PEPTIDE_COLOR : POSITIVE_PEPTIDE_COLOR}
+                        stroke={getPeptideColor(peptide)}
                         strokeLinecap="butt"
                         strokeWidth="5"
                         x1={`${x1}%`}
                         x2={`${x2}%`}
                         y1={y}
                         y2={y}
-                    />
+                    >
+                        <title>{getPeptideTooltipText(peptide)}</title>
+                    </line>
                 ))}
 
                 <line
