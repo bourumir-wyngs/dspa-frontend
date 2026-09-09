@@ -12,6 +12,7 @@ import ExperimentsOverview from './components/ExperimentsOverview';
 import Impressum from './components/Impressum';
 import Condition from './components/ConditionView';
 import LoginForm from './components/LoginForm';
+import LegalLinks from './components/LegalLinks';
 
 // Styles Import
 import "./styles/main.css";
@@ -72,6 +73,7 @@ const App = () => {
   if (!isAuthenticated) {
     return <div >
       <LoginForm onLogin={handleLogin} />
+      <LegalLinks />
     </div>;
   }
 
@@ -127,6 +129,7 @@ const App = () => {
         <Route path="/condition/:selectedCondition" element={<Condition />} />
         <Route path="*" element={<NotFound />} />
       </Routes>
+      <LegalLinks />
     </div>
   );
 };

@@ -81,3 +81,21 @@ html, body {
   box-shadow: var(--box-shadow);
   border-radius: var(--border-radius);
 }
+
+.legal-links {
+  margin-top: 2rem;
+  padding: 1rem;
+  border-top: 1px solid var(--line-color);
+}
+
+.legal-links nav {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 1.5rem;
+}
+
+.legal-links a {
+  color: var(--text-color-header);
+  text-underline-offset: 0.2em;
+}

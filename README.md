@@ -73,6 +73,22 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
   - Application entry point.
   - Sets up routing, top-level navigation, and a simple login gate before exposing the main UI.
 
+### Public privacy and terms pages
+
+- `public/privacy/index.html` provides `/privacy` (redirecting to `/privacy/`).
+- `public/terms/index.html` provides `/terms` (redirecting to `/terms/`).
+- `public/legal.css` supplies their shared styling without third-party fonts or scripts.
+- `src/components/LegalLinks.jsx` links to both documents from the login screen and application.
+
+These are **draft templates**, not approved policies. Complete the bracketed fields and confirm
+the processing descriptions before publishing. See [the publication notes](doc/legal-pages.md).
+Create React App copies the files into `build/`. The production server in `dspa-main/index.mjs`
+serves that directory with `express.static` before the React fallback, so these documents are
+readable without JavaScript, an app login or a database request. Links deliberately use ordinary
+anchors rather than React Router navigation. No MCP endpoint or Microsoft app-manifest change
+is needed: the manifest already points to `https://dynaprot.org/privacy` and
+`https://dynaprot.org/terms`.
+
 ### Main route components
 
 - `src/components/Home.jsx`
