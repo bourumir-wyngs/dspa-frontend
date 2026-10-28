@@ -1,6 +1,5 @@
 const { expect, test } = require('@playwright/test');
 const {
-  login,
   mockBackend,
   mockProteinExperimentIDs,
   mockProteinSequence,
@@ -30,8 +29,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('renders the protein sequence and structural barcode viewer', async ({ page }) => {
-  await login(page);
-
   const proteinResponse = page.waitForResponse((response) =>
     response.url().includes('/api/v1/proteins') &&
     response.url().includes('proteinName=P0A9P4') &&

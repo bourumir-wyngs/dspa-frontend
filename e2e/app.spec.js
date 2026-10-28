@@ -1,19 +1,17 @@
 const { expect, test } = require('@playwright/test');
-const { login, mockBackend } = require('./support/app');
+const { mockBackend } = require('./support/app');
 
 test.beforeEach(async ({ page }) => {
   await mockBackend(page);
   await page.goto('/');
 });
 
-test('requires login before showing the application shell', async ({ page }) => {
-  await expect(page.locator('.login-form')).toBeVisible();
-  await expect(page.getByRole('button', { name: /^login$/i })).toBeVisible();
+test('shows the application shell in a fresh browser context', async ({ page }) => {
+  await expect(page.getByRole('banner').getByRole('link', { name: 'DYNAPROT', exact: true })).toBeVisible();
+  await expect(page.getByRole('navigation', { name: 'Legal' })).toBeVisible();
 });
 
-test('logs in and renders the home page navigation', async ({ page }) => {
-  await login(page);
-
+test('renders the home page navigation', async ({ page }) => {
   await expect(page.getByText('DynaProt', { exact: true })).toBeVisible();
   await expect(page.getByRole('link', { name: /^home$/i })).toBeVisible();
   await expect(page.getByRole('link', { name: /find proteins/i })).toBeVisible();
@@ -21,7 +19,6 @@ test('logs in and renders the home page navigation', async ({ page }) => {
 });
 
 test('runs a protein search from the search page', async ({ page }) => {
-  await login(page);
   await page.getByRole('link', { name: /find proteins/i }).click();
 
   await expect(page).toHaveURL(/\/search$/);

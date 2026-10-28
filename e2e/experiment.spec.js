@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const { expect, test } = require('@playwright/test');
-const { login, mockBackend } = require('./support/app');
+const { mockBackend } = require('./support/app');
 
 test.beforeEach(async ({ page }) => {
   await mockBackend(page);
@@ -8,8 +8,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('renders experiment details, plots, downloads, and significant proteins', async ({ page }) => {
-  await login(page);
-
   const experimentResponse = page.waitForResponse((response) =>
     response.url().includes('/api/v1/experiment?') &&
     response.url().includes('experimentID=DPX000005') &&

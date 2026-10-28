@@ -1,5 +1,5 @@
 const { expect, test } = require('@playwright/test');
-const { login, mockBackend } = require('./support/app');
+const { mockBackend } = require('./support/app');
 
 test.beforeEach(async ({ page }) => {
   await mockBackend(page);
@@ -7,8 +7,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('renders the experiments page as a filterable table', async ({ page }) => {
-  await login(page);
-
   const experimentsResponse = page.waitForResponse((response) =>
     response.url().includes('/api/v1/experiments') &&
     response.status() === 200

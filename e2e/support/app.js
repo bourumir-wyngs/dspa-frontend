@@ -357,14 +357,7 @@ async function mockBackend(page) {
   });
 }
 
-async function login(page) {
-  await page.locator('.login-form input[type="text"]').fill('lipatlas');
-  await page.locator('.login-form input[type="password"]').fill('lipatlas');
-  await page.getByRole('button', { name: /^login$/i }).click();
-}
-
 module.exports = {
-  login,
   mockBackend,
   mockProteinExperimentIDs,
   mockProteinSequence,

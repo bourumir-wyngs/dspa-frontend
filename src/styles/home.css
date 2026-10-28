@@ -303,11 +303,6 @@
     margin-bottom: 30px; /* Adds space after the publication link */
   }
 
-  .login-form {
-    width: 300px;
-    margin: 0 auto;
-  }
-  
   .form-group {
     display: flex;
     flex-direction: column;

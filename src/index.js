@@ -11,7 +11,6 @@ import ExperimentInfo from './components/ExperimentView';
 import ExperimentsOverview from './components/ExperimentsOverview';
 import Impressum from './components/Impressum';
 import Condition from './components/ConditionView';
-import LoginForm from './components/LoginForm';
 import LegalLinks from './components/LegalLinks';
 
 // Styles Import
@@ -33,9 +32,6 @@ const root = createRoot(document.getElementById("root"));
 const NotFound = () => <div>Page not found.</div>;
 
 const App = () => {
-  const [isAuthenticated, setIsAuthenticated] = useState(() => {
-    return localStorage.getItem('isAuthenticated') === 'true';
-  });
   const [isEthzLogoAvailable, setIsEthzLogoAvailable] = useState(false);
 
   useEffect(() => {
@@ -58,24 +54,6 @@ const App = () => {
       isMounted = false;
     };
   }, []);
-
-  const handleLogin = (username, password) => {
-    if (username === "lipatlas" && password === "lipatlas") {
-      localStorage.setItem('isAuthenticated', 'true');
-      setIsAuthenticated(true);
-    } else {
-      localStorage.setItem('isAuthenticated', 'false');
-      setIsAuthenticated(false);
-      alert('Authentication failed, please check your username and password');
-    }
-  };
-
-  if (!isAuthenticated) {
-    return <div >
-      <LoginForm onLogin={handleLogin} />
-      <LegalLinks />
-    </div>;
-  }
 
   return (
     <div>

@@ -8,8 +8,8 @@ hid the routes from anonymous visitors.
 The templates now live in `public/privacy/index.html` and `public/terms/index.html`.
 They are ordinary HTML documents served before the React fallback. The extensionless
 URLs redirect to the corresponding directory URL with a trailing slash and then
-return HTML. They require neither a sign-in nor JavaScript. Their CSS and favicon
-are hosted on the same site.
+return HTML. They require no JavaScript; access through the MCP gateway follows its
+authentication policy. Their CSS and favicon are hosted on the same site.
 
 ## Complete before publication
 
@@ -34,7 +34,9 @@ do not establish legal compliance or replace the operator's existing agreements.
 
 Source paths below are relative to the frontend repository root.
 
-- `src/index.js` stores the website's `isAuthenticated` flag in local storage.
+- `../dspa-mcp/src/mcp/web/browser_auth.rs` manages browser authentication and
+  session cookies at the gateway. The frontend stores no authentication state in
+  local storage.
 - `public/index.html` loads Google Fonts for the React application. The legal
   pages themselves use system fonts and do not load the application bundle.
 - The research frontend uses UniProt and EMBL-EBI/AlphaFold services. The MCP
@@ -64,7 +66,8 @@ production `dspa-main/Dockerfile` already copies and builds this frontend; deplo
 the updated webapp image through the existing website release process. Rebuilding
 or redeploying only the MCP server on port 7778 will not update the website on 443.
 
-After the website deployment, verify anonymously:
+After the website deployment, check access through the deployed gateway, including
+whether its authentication policy permits the intended public access:
 
 ```bash
 curl --fail --location https://dynaprot.org/privacy
@@ -73,5 +76,5 @@ curl --fail --location https://dynaprot.org/terms
 
 Each final response should be HTML containing the matching document heading,
 with completed operator details and no draft-template notice. Also open the links
-from the login screen and check them with JavaScript disabled. The Microsoft ZIP
+from the application footer and check them with JavaScript disabled. The Microsoft ZIP
 does not need rebuilding for unchanged privacy and terms URLs.

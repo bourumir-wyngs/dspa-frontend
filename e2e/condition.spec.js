@@ -1,6 +1,6 @@
 const fs = require('fs/promises');
 const { expect, test } = require('@playwright/test');
-const { login, mockBackend } = require('./support/app');
+const { mockBackend } = require('./support/app');
 
 test.beforeEach(async ({ page }) => {
   await mockBackend(page);
@@ -8,8 +8,6 @@ test.beforeEach(async ({ page }) => {
 });
 
 test('navigates to a condition page from the home page condition controls', async ({ page }) => {
-  await login(page);
-
   const conditionSelect = page.locator('#condition-select');
   await expect(conditionSelect).toContainText('Control');
   await expect(conditionSelect).toContainText('Oxidative stress');
@@ -27,8 +25,6 @@ test('navigates to a condition page from the home page condition controls', asyn
 });
 
 test('renders the selected condition page protein table', async ({ page }) => {
-  await login(page);
-
   await page.locator('#condition-select').selectOption({ label: 'Malate — Escherichia coli' });
   const firstProteinResponse = page.waitForResponse((response) =>
     response.url().includes('/api/v1/proteins') &&
