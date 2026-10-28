@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import config from "../config.json";
 import { useLocation, useNavigate } from "react-router-dom";
 import proteinDynamics from "../protein_dynamics.gif";
+import ServicesBox from "./ServicesBox";
 
 const getConditionOptionLabel = (conditionOption) => {
   if (!conditionOption) {
@@ -128,7 +129,7 @@ function Home() {
           <span className="dspa-large">Explore dynamic changes in protein structure.</span>
         </div>
 
-        <div className="three-boxes-container" ref={boxesContainerRef}>
+        <div className="home-boxes-container" ref={boxesContainerRef}>
           {/* Left Box - condition Dropdown */}
           <div className="box">
             <div className="box-content">
@@ -179,7 +180,7 @@ function Home() {
           </form>
         </div>
 
-        {/* Right Box - Experiment Link */}
+        {/* Experiment Link */}
         <div className="box">
           <div className="box-content">
             <label>Go to Experiments</label>
@@ -189,6 +190,7 @@ function Home() {
             <button onClick={() => navigate("/experiments")}>View Experiments</button>
           </div>
         </div>
+        <ServicesBox />
       </div>
 
         <div className="dspa-publications">

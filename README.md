@@ -47,6 +47,8 @@ That UniProt response is used to extract linked PDB entries and to supplement Al
 
 ### DSPA backend endpoints
 
+- `GET /api/v1/user`
+  - Returns the gateway-provided user ID for the home page's Services box, without caching.
 - `GET /api/v1/search?searchTerm=...`
   - Used by the Home and Search views to look up proteins and navigate to either a result list or a protein visualization page.
 - `GET /api/v1/proteins?proteinName=...`
@@ -93,7 +95,11 @@ navigation. The Microsoft app manifest already points to `https://dynaprot.org/p
 ### Main route components
 
 - `src/components/Home.jsx`
-  - Landing page with quick protein search and condition selection.
+  - Landing page with condition selection, protein search, experiments, and services.
+- `src/components/ServicesBox.jsx`
+  - Provides buttons for `/importer/`, `/adminer/`, and logout. The Logout tooltip
+    shows the user ID; clicking it posts to `/auth/logout` and returns to `/`,
+    where the gateway handles sign-in.
 - `src/components/Search.jsx`
   - Dedicated protein search page with navigation to visualization results.
 - `src/components/ProteinView.jsx`

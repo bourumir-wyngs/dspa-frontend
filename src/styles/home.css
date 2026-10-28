@@ -144,21 +144,20 @@
   }
 
 
-  .three-boxes-container {
-    display: flex;
-    justify-content: space-around;
-    gap: 20px; /* Reduce the gap for smaller widths */
+  .home-boxes-container {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 20px;
     padding: 20px;
-    width: 80%; /* Make the container smaller */
-    max-width: 960px; /* Adjust maximum width for larger screens */
+    width: 90%;
+    max-width: 1280px;
+    box-sizing: border-box;
     margin-top: 500px; /* Space from the centered text */
-    flex-wrap: wrap; /* Allows boxes to wrap in smaller screens */
     position: relative;
 }
   
 .box {
-  flex: 1 1 260px; /* Allows boxes to grow and shrink but not smaller than 260px */
-  max-width: 31%; /* Restricts box from taking more than a third of container width */
+  min-width: 0;
   padding: 15px;
   border-radius: 8px;
   text-align: center;
@@ -193,12 +192,29 @@
   margin-top: 0;
 }
 
-@media (max-width: 600px) {
-  .three-boxes-container {
-      width: 100%; /* Full width for very small screens */
+@media (max-width: 1100px) {
+  .dspa-text-blue {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    margin-top: 80px;
   }
-  .box {
-      max-width: 100%; /* Each box takes full width on small screens */
+
+  .dspa-logo-text {
+    font-size: clamp(48px, 10vw, 100px);
+  }
+
+  .home-boxes-container {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    margin-top: 80px;
+  }
+}
+
+@media (max-width: 600px) {
+  .home-boxes-container {
+    grid-template-columns: 1fr;
+    width: 100%;
   }
 }
   .box p.description {
@@ -206,16 +222,17 @@
     color: var(--text-color-sub-header);
   }
   
-  .box label {
+  .box label,
+  .box h2 {
     display: block;
     font-weight: bold;
-    margin-bottom: 10px;
+    margin: 0 0 10px;
     text-align: center; 
     font-size:var(--font-size-header);
     font-family: var(--font-family-base);
     color: inherit;
   }
-  
+
   .box button,
   .box select,
   .box input {
@@ -248,6 +265,10 @@
   
   .box button:hover {
     background-color: var(--main-color);
+  }
+
+  .services-actions button {
+    margin-top: 0;
   }
 
   form {

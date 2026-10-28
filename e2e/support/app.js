@@ -1,3 +1,5 @@
+const mockUserId = 'ethz:mock-user';
+
 const mockSearchResults = {
   success: true,
   table: [
@@ -250,6 +252,14 @@ const mockConditionData = {
 };
 
 async function mockBackend(page) {
+  await page.route('**/api/v1/user', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ userId: mockUserId }),
+    });
+  });
+
   await page.route('**/api/v1/experiments', async (route) => {
     await route.fulfill({
       status: 200,
@@ -359,6 +369,7 @@ async function mockBackend(page) {
 
 module.exports = {
   mockBackend,
+  mockUserId,
   mockProteinExperimentIDs,
   mockProteinSequence,
 };

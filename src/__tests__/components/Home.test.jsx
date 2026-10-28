@@ -10,6 +10,8 @@ jest.mock('react-router-dom', () => ({
   useLocation: () => mockUseLocation(),
 }), { virtual: true });
 
+jest.mock('../../components/ServicesBox', () => () => <section>Services</section>);
+
 import Home from '../../components/Home';
 
 const flushPromises = async () => {
