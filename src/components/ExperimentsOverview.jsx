@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import config from '../config.json';
+import config from '../config';
 import Select from 'react-select';
 import { useNavigate } from 'react-router-dom';
 

@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import config from "../config.json";
+import config from "../config";
 import { useLocation, useNavigate } from "react-router-dom";
 import proteinDynamics from "../protein_dynamics.gif";
 import ServicesBox from "./ServicesBox";

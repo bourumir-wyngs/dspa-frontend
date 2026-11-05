@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import config from '../config.json';
+import config, { appPath } from '../config';
 import VolcanoPlot from '../visualization/volcanoplot.js';
 import GOEnrichmentVisualization from '../visualization/GOEnrichmentVisualization.js';
 
@@ -188,7 +188,7 @@ const ExperimentInfo = () => {
                                 <td className="significant-protein-cell-center">
                                     {protein.proteinAccession || protein.pg_protein_accessions ? (
                                         <a
-                                            href={`/visualize/${protein.proteinAccession || protein.pg_protein_accessions}`}
+                                            href={appPath(`/visualize/${encodeURIComponent(protein.proteinAccession || protein.pg_protein_accessions)}`)}
                                             target="_blank"
                                             rel="noopener noreferrer"
                                         >

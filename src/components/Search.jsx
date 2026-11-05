@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import config from '../config.json';
+import config from '../config';
 import ProteinSearchResults from './ProteinSearchResults.jsx';
 
 

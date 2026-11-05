@@ -14,7 +14,32 @@ This subproject provides the browser-based user interface for the DSPAtlas/DynaP
 
 In the wider DSPA workspace, `dspa-frontend` is the presentation layer that consumes data prepared by the DSPA backend and exposes it as an interactive web application.
 
-Browser authentication is handled by the `dspa-mcp` gateway before requests reach the webapp. The frontend renders directly, uses the gateway's browser session for same-origin API requests, and stores no authentication state in local storage. Direct local development has no frontend login gate.
+The public build serves shared data at `/`. For the private build, browser authentication is handled by the `dspa-mcp` gateway before requests reach the webapp. The frontend uses the gateway's browser session for same-origin API requests and stores no authentication state in local storage. Direct local development has no frontend login gate.
+
+## Public and private builds
+
+`PUBLIC_URL` sets the compiled application mount, including assets, Router basename,
+API requests, and raw application links. It must be `/` or a local path such as `/db`.
+`REACT_APP_DSPA_PRIVATE_APP=true` enables the private user/logout controls. Both are
+build-time settings; changing container runtime environment does not rewrite a bundle.
+
+```bash
+# Public shared-data site at /.
+PUBLIC_URL=/ REACT_APP_DSPA_PRIVATE_APP=false npm run build
+
+# Private application at /db; gateway strips /db before forwarding to Express.
+PUBLIC_URL=/db REACT_APP_DSPA_PRIVATE_APP=true npm run build
+```
+
+The public Services card links to `/db/`, `/db/importer/`, and `/db/adminer/`.
+The private build uses its own mount for API, importer, Adminer, and logout URLs;
+the `/db` build posts logout to `/db/auth/logout` and returns to the public `/` page.
+Legal links remain at public `/privacy` and `/terms`.
+
+`../dspa-main/build_docker_image.sh --persistent --base-path /db` builds the private
+image with these settings. Its default base remains `/` for existing local setups.
+`DSPA_WEBAPP_BASE_PATH` is the equivalent build-helper environment override. The
+`../dspa-mcp/webapp/build.sh` wrapper accepts the same `--base-path` option.
 
 ## Technologies
 Built as a React 18 single-page application with React Router-based navigation and Create React App tooling, this frontend combines custom DSPA UI components with `react-select`-driven filtering and Nightingale web components for protein sequence/structure views. Data-rich charts such as volcano plots and GO enrichment views are rendered with D3.js, while the application integrates both the internal DSPA backend API and the UniProt REST API for biological data and structure references.
@@ -28,12 +53,20 @@ Playwright tests live in `e2e/` and run against `http://localhost:3000` by defau
 - Run interactively with `npm run e2e:ui`.
 
 Set `PLAYWRIGHT_BASE_URL` only if you intentionally need to point the browser at a different local frontend URL.
+For the private `/db` build, run the mount-aware shell/navigation tests with
+`PLAYWRIGHT_APP_PATH=/db PLAYWRIGHT_PRIVATE_APP=true npm run e2e -- e2e/app.spec.js`.
+The default suite targets the public root build. Backend responses are mocked by these
+tests; gateway authentication and real database access have separate integration tests.
 
 ## Backend API used by the frontend
 
-The frontend talks primarily to the DSPA backend through the relative base path configured in `src/config.json`:
+The frontend talks primarily to the DSPA backend through `src/config.js`, which prefixes
+the relative endpoint from `src/config.json` with the compiled application mount:
 
 - `apiEndpoint`: `/api/v1/`
+
+For a `/db` build this becomes `/db/api/v1/`; the upstream Express server continues
+to receive `/api/v1/` after gateway prefix stripping.
 
 The application uses this backend API to retrieve searchable protein records, condition overviews, experiment metadata, experiment-level statistics, and GO enrichment data that are then rendered in the UI.
 
@@ -97,9 +130,9 @@ navigation. The Microsoft app manifest already points to `https://dynaprot.org/p
 - `src/components/Home.jsx`
   - Landing page with condition selection, protein search, experiments, and services.
 - `src/components/ServicesBox.jsx`
-  - Provides buttons for `/importer/`, `/adminer/`, and logout. The Logout tooltip
-    shows the user ID; clicking it posts to `/auth/logout` and returns to `/`,
-    where the gateway handles sign-in.
+  - Public builds link to the private application and services under `/db`.
+    Private builds show the verified user ID in the Logout tooltip, post logout
+    under their mount, and return to the public `/` page.
 - `src/components/Search.jsx`
   - Dedicated protein search page with navigation to visualization results.
 - `src/components/ProteinView.jsx`

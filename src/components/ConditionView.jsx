@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import config from '../config.json';
+import config from '../config';
 import NightingaleComponent from './NightingaleComponent.jsx';
 import VolcanoPlot from '../visualization/volcanoplot.js';
 import { ProteinScoresTable } from '../visualization/ProteinScoresTable.js';

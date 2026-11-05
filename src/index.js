@@ -12,6 +12,7 @@ import ExperimentsOverview from './components/ExperimentsOverview';
 import Impressum from './components/Impressum';
 import Condition from './components/ConditionView';
 import LegalLinks from './components/LegalLinks';
+import { appBasePath, appPath } from './config';
 
 // Styles Import
 import "./styles/main.css";
@@ -48,7 +49,7 @@ const App = () => {
         setIsEthzLogoAvailable(false);
       }
     };
-    ethzLogo.src = "/images/ethz_logo.svg";
+    ethzLogo.src = appPath('/images/ethz_logo.svg');
 
     return () => {
       isMounted = false;
@@ -69,7 +70,7 @@ const App = () => {
                   className="navigation-brand-logo-link"
                 >
                   <img
-                    src="/images/ethz_logo.svg"
+                    src={appPath('/images/ethz_logo.svg')}
                     onError={() => {
                       setIsEthzLogoAvailable(false);
                     }}
@@ -80,7 +81,7 @@ const App = () => {
               ) : (
                 <Link to="/" className="navigation-brand-logo-link">
                   <img
-                    src="/images/dpa_logo.svg"
+                    src={appPath('/images/dpa_logo.svg')}
                     alt="DynaProt logo"
                     className="navigation-brand-logo"
                   />
@@ -114,7 +115,7 @@ const App = () => {
 
 
 root.render(
-  <Router>
+  <Router basename={appBasePath || '/'}>
     <App /> 
   </Router>
 );

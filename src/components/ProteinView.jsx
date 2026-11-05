@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import config from '../config.json';
+import config from '../config';
 import { useParams } from 'react-router-dom';
 import NightingaleComponent from './NightingaleComponent';
 

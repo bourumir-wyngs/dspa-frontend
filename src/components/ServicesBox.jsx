@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import config from '../config.json';
+import config, { isProtectedApp, servicesBasePath } from '../config';
 
 function ServicesBox() {
   const [userId, setUserId] = useState(null);
@@ -8,6 +8,10 @@ function ServicesBox() {
   const [logoutError, setLogoutError] = useState('');
 
   useEffect(() => {
+    if (!isProtectedApp) {
+      setIsLoadingUser(false);
+      return undefined;
+    }
     const controller = new AbortController();
 
     const loadUser = async () => {
@@ -38,7 +42,7 @@ function ServicesBox() {
     setIsLoggingOut(true);
     setLogoutError('');
     try {
-      const response = await fetch('/auth/logout', {
+      const response = await fetch(`${servicesBasePath}/auth/logout`, {
         method: 'POST',
         credentials: 'same-origin',
       });
@@ -57,20 +61,22 @@ function ServicesBox() {
         <h2 id="services-heading">Services</h2>
       </div>
       <div className="box-actions services-actions">
-        <button type="button" onClick={() => window.location.assign('/importer/')}>
+        <button type="button" onClick={() => window.location.assign(`${servicesBasePath}/importer/`)}>
           Import data
         </button>
-        <button type="button" onClick={() => window.location.assign('/adminer/')}>
+        <button type="button" onClick={() => window.location.assign(`${servicesBasePath}/adminer/`)}>
           Direct SQL
         </button>
-        <button
+        {isProtectedApp ? <button
           type="button"
           onClick={handleLogout}
           disabled={isLoggingOut}
           title={`User ${isLoadingUser ? 'Loading…' : userId || 'unavailable'}`}
         >
           {isLoggingOut ? 'Logging out…' : 'Logout'}
-        </button>
+        </button> : <button type="button" onClick={() => window.location.assign(`${servicesBasePath}/`)}>
+          My data
+        </button>}
       </div>
       {logoutError && <p role="alert">{logoutError}</p>}
     </section>

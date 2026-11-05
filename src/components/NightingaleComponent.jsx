@@ -11,6 +11,7 @@ import "@dspa-nightingale/nightingale-structure";
 import { LIP_SCALE as LIP_COLOR_SCALE } from "@dspa-nightingale/nightingale-structure";
 import "@dspa-nightingale/nightingale-track";
 import WoodsPlot from './WoodsPlot.jsx';
+import { appPath } from '../config';
 
 
 // Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
@@ -88,7 +89,7 @@ const getHeatmapTooltip = (d) => {
 
     return `
         <div class="tooltip-container">
-            Experiment: <a href="/experiment/${experimentHref}" target="_blank" rel="noopener noreferrer" class="tooltip-link"><strong>${experimentLabel}</strong></a><br />
+            Experiment: <a href="${appPath(`/experiment/${experimentHref}`)}" target="_blank" rel="noopener noreferrer" class="tooltip-link"><strong>${experimentLabel}</strong></a><br />
             Condition: <strong class="tooltip-highlight">${conditionLabel}</strong><br />
             LiP Score: <strong>${d.score.toFixed(2)}</strong>
         </div>`;
