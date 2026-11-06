@@ -61,6 +61,9 @@ function ServicesBox() {
         <h2 id="services-heading">Services</h2>
       </div>
       <div className="box-actions services-actions">
+        {isProtectedApp && <button type="button" onClick={() => window.location.assign('/')}>
+          Public data
+        </button>}
         <button type="button" onClick={() => window.location.assign(`${servicesBasePath}/importer/`)}>
           Import data
         </button>

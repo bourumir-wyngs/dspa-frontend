@@ -1109,6 +1109,11 @@ const NightingaleComponent = ({
     return (
         <div  id="nightingale-manager-container">
             <p style={{ textAlign: 'center' }}>{proteinData?.proteinDescription}</p>
+            {proteinData.featuresData?.available === false && (
+                <p role="status" style={{ textAlign: 'center' }}>
+                    Protein annotations are temporarily unavailable. Local experimental data is still available.
+                </p>
+            )}
             <div>
 
                 <div className="volcano-plot-legend">

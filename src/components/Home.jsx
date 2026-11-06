@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import config from "../config";
+import config, { isProtectedApp } from "../config";
 import { useLocation, useNavigate } from "react-router-dom";
 import proteinDynamics from "../protein_dynamics.gif";
 import ServicesBox from "./ServicesBox";
@@ -126,7 +126,9 @@ function Home() {
           <br />
           <span className="dspa-logo-text">DynaProt</span>
           <br />
-          <span className="dspa-large">Explore dynamic changes in protein structure.</span>
+          <span className="dspa-large">
+            {isProtectedApp ? "Personal data analysis." : "Explore dynamic changes in protein structure."}
+          </span>
         </div>
 
         <div className="home-boxes-container" ref={boxesContainerRef}>

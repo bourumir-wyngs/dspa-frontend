@@ -1114,8 +1114,39 @@ describe('NightingaleComponent Rendering', () => {
             expect(screen.getByText('Modified residue')).toBeInTheDocument();
         });
 
-        it('omits domain feature track if features do not exist', () => {
-            const noFeatures = { ...mockProteinData, featuresData: { features: [] } };
+        it('shows unavailable annotations while retaining the local sequence and experimental plot', async () => {
+            const unavailable = {
+                ...mockProteinData,
+                featuresData: {
+                    available: false,
+                    sequence: mockProteinData.proteinSequence,
+                    features: [],
+                },
+            };
+            const { container } = render(
+                <NightingaleComponent
+                    proteinData={unavailable}
+                    pdbIds={[]}
+                    selectedPdbId={null}
+                    setSelectedPdbId={() => {}}
+                />
+            );
+
+            expect(screen.getByRole('status')).toHaveTextContent(
+                'Protein annotations are temporarily unavailable. Local experimental data is still available.'
+            );
+            expect(screen.getByText('Test Protein')).toBeInTheDocument();
+            expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+            const woodsPlot = container.querySelector('nightingale-woods-plot');
+            expect(woodsPlot.peptideData).toEqual(mockProteinData.peptideLevelData);
+            await waitFor(() => expect(woodsPlot.selectedComparison).toBe('exp1'));
+            expect(woodsPlot.querySelectorAll('.woods-plot-peptide')).toHaveLength(1);
+            await waitFor(() => expect(container.querySelector('nightingale-sequence'))
+                .toHaveAttribute('sequence', mockProteinData.proteinSequence));
+        });
+
+        it.each([undefined, true])('omits empty feature tracks without an outage warning when available=%s', (available) => {
+            const noFeatures = { ...mockProteinData, featuresData: { features: [], available } };
             render(
                 <NightingaleComponent 
                     proteinData={noFeatures}
@@ -1125,6 +1156,7 @@ describe('NightingaleComponent Rendering', () => {
                 />
             );
             expect(screen.queryByText('Domain')).not.toBeInTheDocument();
+            expect(screen.queryByRole('status')).not.toBeInTheDocument();
         });
     });
 });
