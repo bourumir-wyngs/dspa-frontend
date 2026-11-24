@@ -491,13 +491,14 @@ describe('NightingaleComponent Rendering', () => {
         barcodeSequence: {}
     };
 
-    it('renders without crashing with minimal props', async () => {
+    it('renders the Woods plot on a condition page', async () => {
         const { container } = render(
             <NightingaleComponent 
                 proteinData={mockProteinData}
                 pdbIds={[]}
                 selectedPdbId="1XYZ"
                 setSelectedPdbId={() => {}}
+                masterCondition="CondA"
             />
         );
         expect(screen.getByText('Test Protein')).toBeInTheDocument();
@@ -624,6 +625,7 @@ describe('NightingaleComponent Rendering', () => {
                 pdbIds={[]}
                 selectedPdbId={null}
                 setSelectedPdbId={() => {}}
+                masterCondition="CondA"
             />
         );
 
@@ -679,6 +681,7 @@ describe('NightingaleComponent Rendering', () => {
                 pdbIds={[]}
                 selectedPdbId={null}
                 setSelectedPdbId={() => {}}
+                masterCondition="CondA"
             />
         );
 
@@ -741,6 +744,7 @@ describe('NightingaleComponent Rendering', () => {
                 pdbIds={[]}
                 selectedPdbId={null}
                 setSelectedPdbId={() => {}}
+                masterCondition="CondA"
             />
         );
 
@@ -775,6 +779,7 @@ describe('NightingaleComponent Rendering', () => {
                 pdbIds={[]}
                 selectedPdbId={null}
                 setSelectedPdbId={() => {}}
+                masterCondition="CondA"
             />
         );
 
@@ -852,6 +857,8 @@ describe('NightingaleComponent Rendering', () => {
         
         // We shouldn't see the split condition text
         expect(container.textContent).not.toContain('(other conditions)');
+        expect(container.querySelector('nightingale-woods-plot')).toBeNull();
+        expect(screen.queryByText('Woods plot')).not.toBeInTheDocument();
         
         // Heatmap should just be 'Structural-Barcode'
         const tdNodes = Array.from(container.querySelectorAll('td'));
@@ -949,6 +956,7 @@ describe('NightingaleComponent Rendering', () => {
                     pdbIds={[]}
                     selectedPdbId={null}
                     setSelectedPdbId={() => {}}
+                    masterCondition="CondA"
                 />
             );
             // exp2 button should be present and selected

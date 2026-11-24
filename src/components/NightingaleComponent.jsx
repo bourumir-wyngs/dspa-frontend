@@ -529,19 +529,17 @@ const NightingaleComponent = ({
         return mapping;
     }, [proteinData.experimentMetaData]);
 
-    // Limit Woods plot input to comparisons available in this view. Protein pages
-    // include every comparison, while condition pages pass a smaller applicable
-    // comparison list. useMemo avoids filtering a potentially large peptide array
-    // on unrelated renders and keeps the prop reference stable; it is recomputed
-    // only when the source peptide rows or applicable comparison IDs change.
+    // Woods plots are only shown on condition pages, using that view's comparisons.
     const woodsPlotPeptideData = useMemo(() => {
+        if (!masterCondition) return [];
+
         const peptideLevelData = Array.isArray(proteinData.peptideLevelData)
             ? proteinData.peptideLevelData
             : [];
         const includedComparisons = new Set(experimentIDsList);
 
         return peptideLevelData.filter(({ dpx_comparison }) => includedComparisons.has(dpx_comparison));
-    }, [experimentIDsList, proteinData.peptideLevelData]);
+    }, [experimentIDsList, masterCondition, proteinData.peptideLevelData]);
 
     const [trackHeight, setTrackHeight] = useState(null);
     const lastLayoutHeightsRef = useRef({ structureHeight: null, trackHeight: null });
@@ -1350,21 +1348,23 @@ const NightingaleComponent = ({
                             </tr>
                         )}
 
-                        <tr>
-                            <td>
-                                Woods plot
-                                <div>log<sub>2</sub>FC</div>
-                            </td>
-                            <td>
-                                <WoodsPlot
-                                    length={featureSequenceLength}
-                                    peptideData={woodsPlotPeptideData}
-                                    comparisonMetadata={experimentIDToMeta}
-                                    selectedComparison={selectedExperiment}
-                                    onComparisonSelect={setSelectedExperiment}
-                                />
-                            </td>
-                        </tr>
+                        {Boolean(masterCondition) && (
+                            <tr>
+                                <td>
+                                    Woods plot
+                                    <div>log<sub>2</sub>FC</div>
+                                </td>
+                                <td>
+                                    <WoodsPlot
+                                        length={featureSequenceLength}
+                                        peptideData={woodsPlotPeptideData}
+                                        comparisonMetadata={experimentIDToMeta}
+                                        selectedComparison={selectedExperiment}
+                                        onComparisonSelect={setSelectedExperiment}
+                                    />
+                                </td>
+                            </tr>
+                        )}
 
                     </tbody>
                 </table>
