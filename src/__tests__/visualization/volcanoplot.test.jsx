@@ -196,7 +196,7 @@ describe('VolcanoPlot', () => {
     expect(container.querySelectorAll('.plot-wrapper')).toHaveLength(3);
   });
 
-  it('downloads differential abundance data as CSV', () => {
+  it('downloads CSV retaining adjusted p-values and appending raw p-values', () => {
     const originalCreateObjectURL = URL.createObjectURL;
     const OriginalBlob = global.Blob;
     class TestBlob {
@@ -220,10 +220,10 @@ describe('VolcanoPlot', () => {
       const csvBlob = URL.createObjectURL.mock.calls[0][0];
       const csvText = csvBlob.parts.join('');
       expect(csvBlob.options).toEqual({ type: 'text/csv;charset=utf-8;' });
-      expect(csvText).toContain(
-        'Experiment ID,Comparison,Peptide Key,Protein Accession,Fold Change (log2),p-value'
+      expect(csvText.split('\n')[0]).toBe(
+        'Experiment ID,Comparison,Peptide Key,Protein Accession,Fold Change (log2),q-value,p-value'
       );
-      expect(csvText).toContain('EXP-WIDE,Wide Dose,pep-up,P-UP,2.2,0.01');
+      expect(csvText.split('\n')).toContain('EXP-WIDE,Wide Dose,pep-up,P-UP,2.2,0.5,0.01');
     } finally {
       URL.createObjectURL = originalCreateObjectURL;
       global.Blob = OriginalBlob;

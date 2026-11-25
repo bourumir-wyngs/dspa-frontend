@@ -71,7 +71,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
   function downloadCSV() {
     if (!Array.isArray(differentialAbundanceDataList)) return;
 
-    const rows = [["Experiment ID", "Comparison", "Peptide Key", "Protein Accession", "Fold Change (log2)", "p-value"]];
+    const rows = [["Experiment ID", "Comparison", "Peptide Key", "Protein Accession", "Fold Change (log2)", "q-value", "p-value"]];
     differentialAbundanceDataList.forEach(exp => {
       exp.data.forEach(d => {
         rows.push([
@@ -80,6 +80,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           d.pep_grouping_key,
           d.pg_protein_accessions,
           d.diff,
+          d.adj_pval,
           d.pval
         ]);
       });
