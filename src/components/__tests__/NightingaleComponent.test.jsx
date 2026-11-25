@@ -924,6 +924,57 @@ describe('NightingaleComponent Rendering', () => {
         }
     });
 
+    it.each([
+        ['protein viewer', undefined],
+        ['condition view', 'CondA'],
+    ])('switches structure coloring and legend while preserving the latest LiP experiment in the %s', async (_view, masterCondition) => {
+        const firstScores = Array(10).fill(0.2);
+        const secondScores = Array(10).fill(0.8);
+        const proteinData = {
+            ...mockProteinData,
+            lipscoreList: [
+                { experimentID: 'exp1', data: firstScores },
+                { experimentID: 'exp2', data: secondScores },
+            ],
+        };
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={proteinData}
+                pdbIds={[]}
+                selectedPdbId="AF-P12345-F1"
+                setSelectedPdbId={() => {}}
+                masterCondition={masterCondition}
+            />
+        );
+        const structure = container.querySelector('nightingale-structure');
+        const checkbox = screen.getByRole('checkbox', { name: 'pLDDT' });
+        const legend = container.querySelector('.volcano-plot-legend');
+
+        await waitFor(() => expect(structure).toHaveAttribute('lipscore-array', JSON.stringify(firstScores)));
+        expect(structure).toHaveAttribute('color-by', 'lip');
+        expect(checkbox).not.toBeChecked();
+        expect(legend).toHaveTextContent('No data');
+
+        fireEvent.click(checkbox);
+        await waitFor(() => expect(structure).toHaveAttribute('color-by', 'plddt'));
+        expect(checkbox).toBeChecked();
+        expect(legend).toHaveTextContent('pLDDT confidence:');
+        expect(legend).toHaveTextContent('70–90');
+        expect(legend).not.toHaveTextContent('No data');
+
+        fireEvent.click(screen.getByText('Experiment exp2'));
+        await waitFor(() => expect(structure).toHaveAttribute('lipscore-array', JSON.stringify(secondScores)));
+        expect(structure).toHaveAttribute('color-by', 'plddt');
+        expect(checkbox).toBeChecked();
+
+        fireEvent.click(checkbox);
+        await waitFor(() => expect(structure).toHaveAttribute('color-by', 'lip'));
+        expect(checkbox).not.toBeChecked();
+        expect(legend).toHaveTextContent('No data');
+        expect(legend).not.toHaveTextContent('pLDDT confidence:');
+        expect(structure).toHaveAttribute('lipscore-array', JSON.stringify(secondScores));
+    });
+
     it('handles empty experiment lists gracefully', () => {
         const emptyData = {
             ...mockProteinData,

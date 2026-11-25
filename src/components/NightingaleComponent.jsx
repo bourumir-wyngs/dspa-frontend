@@ -492,6 +492,7 @@ const NightingaleComponent = ({
     const otherScoreBarcodeContainer = useRef(null);
     
     const [selectedExperiment, setSelectedExperiment] = useState('');
+    const [colorByPlddt, setColorByPlddt] = useState(false);
     const availableExperimentIds = useMemo(
         () => proteinData.lipscoreList?.map(entry => entry.experimentID) || [],
         [proteinData.lipscoreList]
@@ -924,12 +925,13 @@ const NightingaleComponent = ({
         }
 
         if (structureRef.current) {
+            structureRef.current.setAttribute('color-by', colorByPlddt ? 'plddt' : 'lip');
             structureRef.current.setAttribute('protein-accession', proteinName);
             structureRef.current.setAttribute('structure-id', selectedPdbId);
             structureRef.current.setAttribute('highlight-color', '#FF6699');
             structureRef.current.setAttribute('lipscore-array',  lipscoreString);
             }
-    }, [ proteinName, selectedPdbId, lipscoreString]);
+    }, [ proteinName, selectedPdbId, lipscoreString, colorByPlddt]);
 
     useEffect(() => {
         customElements.whenDefined("nightingale-colored-sequence").then(() => {
@@ -1088,8 +1090,9 @@ const NightingaleComponent = ({
         return () => observer.disconnect();
     }, [mappedFeatures]);
 
-    // Legend derived from the shared LIP_COLOR_SCALE (reversed so lowest scores appear first)
-    const legendData = [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }));
+    const legendData = colorByPlddt
+        ? PLDDT_CONFIDENCE_SCALE
+        : [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }));
     const wrappedHeatmapLabelStyle = {
         whiteSpace: 'normal',
         overflowWrap: 'anywhere',
@@ -1102,6 +1105,7 @@ const NightingaleComponent = ({
             <div>
 
                 <div className="volcano-plot-legend">
+                    {colorByPlddt && <strong>pLDDT confidence:</strong>}
                     {legendData.map((item, index) => (
                         <div key={index} style={{ display: 'flex', alignItems: 'center' }}>
                             <div
@@ -1117,6 +1121,18 @@ const NightingaleComponent = ({
                             <span>{item.label}</span>
                         </div>
                     ))}
+                    <label
+                        title="Colour the protein structure by pLDDT score"
+                        style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                    >
+                        <input
+                            type="checkbox"
+                            name="color-by-plddt"
+                            checked={colorByPlddt}
+                            onChange={(event) => setColorByPlddt(event.target.checked)}
+                        />
+                        pLDDT
+                    </label>
                 </div>
                 {experimentIDsList.length > 5 ? (
                     <div className="experiment-dropdown">
@@ -1290,19 +1306,6 @@ const NightingaleComponent = ({
                                     margin-color={heatmapAttributes["margin-color"]}
                                     style={{ display: 'block', width: '100%' }}
                                 />
-                                <div
-                                    className="plddt-confidence-legend"
-                                    aria-label="Confidence"
-                                    style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px', fontSize: '12px', marginTop: '6px' }}
-                                >
-                                    <strong>Confidence:</strong>
-                                    {PLDDT_CONFIDENCE_SCALE.map(({ label, color }) => (
-                                        <span key={color} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
-                                            <span aria-hidden="true" style={{ display: 'inline-block', width: '14px', height: '14px', flexShrink: 0, backgroundColor: color }} />
-                                            {label}
-                                        </span>
-                                    ))}
-                                </div>
                             </td>
                         </tr>
                     )}
