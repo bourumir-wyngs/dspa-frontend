@@ -160,10 +160,9 @@ describe('NightingaleComponent Utilities', () => {
 
         it('uses the track xScale and rendered svg bounds when available', () => {
             const track = document.createElement('nightingale-track');
-            const shadowRoot = track.attachShadow({ mode: 'open' });
             const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
             svg.getBoundingClientRect = jest.fn(() => rect(100, 1200));
-            shadowRoot.appendChild(svg);
+            track.appendChild(svg);
 
             track.setAttribute('margin-left', '0');
             track.setAttribute('margin-right', '0');
@@ -214,10 +213,9 @@ describe('NightingaleComponent Utilities', () => {
 
         it('maps a heatmap canvas mouse position to a sequence position', () => {
             const heatmap = document.createElement('nightingale-sequence-heatmap');
-            const shadowRoot = heatmap.attachShadow({ mode: 'open' });
             const canvas = document.createElement('canvas');
             canvas.getBoundingClientRect = jest.fn(() => rect(100, 1000));
-            shadowRoot.appendChild(canvas);
+            heatmap.appendChild(canvas);
 
             heatmap.setAttribute('length', '1000');
             heatmap.setAttribute('display-start', '101');
@@ -860,10 +858,70 @@ describe('NightingaleComponent Rendering', () => {
         expect(container.querySelector('nightingale-woods-plot')).toBeNull();
         expect(screen.queryByText('Woods plot')).not.toBeInTheDocument();
         
-        // Heatmap should just be 'Structural-Barcode'
+        // The unsplit structural barcode keeps its original label.
         const tdNodes = Array.from(container.querySelectorAll('td'));
         const hasStructuralBarcode = tdNodes.some(td => td.textContent.trim() === 'Structural-Barcode');
         expect(hasStructuralBarcode).toBe(true);
+    });
+
+    it.each([
+        ['protein viewer', undefined],
+        ['condition view', 'CondA'],
+    ])('delivers only the selected AlphaFold model confidence to one row in the %s and clears it on model changes', async (_view, masterCondition) => {
+        const width = jest.spyOn(HTMLElement.prototype, 'offsetWidth', 'get').mockReturnValue(600);
+        const height = jest.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(30);
+        const HeatmapElement = customElements.get('nightingale-sequence-heatmap');
+        const setData = jest.spyOn(HeatmapElement.prototype, 'setHeatmapData')
+            .mockImplementation(function (xDomain, yDomain, dataHeatmap) {
+                this.__testDataset = { xDomain, yDomain, dataHeatmap };
+            });
+        const props = {
+            proteinData: mockProteinData,
+            pdbIds: [],
+            selectedPdbId: 'AF-P12345-F1',
+            setSelectedPdbId: () => {},
+            masterCondition,
+        };
+
+        try {
+            const { container, rerender, unmount } = render(<NightingaleComponent {...props} />);
+            const structure = container.querySelector('nightingale-structure');
+            const barcode = container.querySelector('[heatmap-id="seq-heatmap-plddt"]');
+            expect(container.querySelectorAll('[heatmap-id="seq-heatmap-plddt"]')).toHaveLength(1);
+            const barcodeRow = barcode.closest('tr');
+            expect(barcodeRow.previousElementSibling.cells[0]).toHaveTextContent('Structural-Barcode');
+            expect(barcodeRow.nextElementSibling.cells[0]).toHaveTextContent('Domain');
+            const structuralRows = Array.from(container.querySelectorAll('nightingale-manager tbody > tr'))
+                .filter(row => row.cells[0]?.textContent.includes('Structural-Barcode'));
+            expect(structuralRows).toHaveLength(masterCondition ? 2 : 1);
+            const emitConfidence = (detail) => fireEvent(structure, new CustomEvent('plddt-change', { detail }));
+            const detail = {
+                proteinAccession: 'P12345',
+                structureId: 'AF-P12345-F1',
+                scores: [{ position: 1, score: 72.69 }, { position: 10, score: 51 }],
+            };
+
+            emitConfidence(detail);
+            await waitFor(() => expect(barcode.__testDataset?.dataHeatmap[0].score).toBe(72.69));
+            expect(barcode.__testDataset.yDomain).toEqual(['pLDDT']);
+            expect(barcode.__testDataset.xDomain).toHaveLength(10);
+            expect(barcode.__testDataset.dataHeatmap[1].score).toBeNull();
+            expect(barcode.__testDataset.dataHeatmap[9].score).toBe(51);
+
+            emitConfidence({ ...detail, proteinAccession: 'OTHER', scores: [{ position: 1, score: 99 }] });
+            emitConfidence({ ...detail, structureId: 'AF-P12345-F2', scores: [{ position: 1, score: 99 }] });
+            expect(barcode.__testDataset.dataHeatmap[0].score).toBe(72.69);
+
+            rerender(<NightingaleComponent {...props} selectedPdbId="1XYZ" />);
+            await waitFor(() => expect(barcode.__testDataset.dataHeatmap.every(cell => cell.score === null)).toBe(true));
+            emitConfidence(detail);
+            expect(barcode.__testDataset.dataHeatmap.every(cell => cell.score === null)).toBe(true);
+            unmount();
+        } finally {
+            setData.mockRestore();
+            width.mockRestore();
+            height.mockRestore();
+        }
     });
 
     it('handles empty experiment lists gracefully', () => {

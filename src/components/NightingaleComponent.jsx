@@ -11,6 +11,7 @@ import "@dspa-nightingale/nightingale-structure";
 import { LIP_SCALE as LIP_COLOR_SCALE } from "@dspa-nightingale/nightingale-structure";
 import "@dspa-nightingale/nightingale-track";
 import WoodsPlot from './WoodsPlot.jsx';
+import { createPlddtHeatmapDataset, getPlddtScoreColor, getPlddtTooltip, PLDDT_CONFIDENCE_SCALE } from './plddt';
 
 
 // Shared color scale for LiP scores — used by the legend, heatmap, and 3D structure.
@@ -160,8 +161,7 @@ const getTrackNumericValue = (trackElement, name, fallback = 0) => {
 };
 
 const getTrackSvgRect = (trackElement) => {
-    const svgElement = trackElement?.shadowRoot?.querySelector?.('svg')
-        || trackElement?.querySelector?.('svg');
+    const svgElement = trackElement?.querySelector?.('svg');
     const svgRect = svgElement?.getBoundingClientRect?.();
 
     if (svgRect?.width) {
@@ -208,8 +208,7 @@ const getSequencePositionForTrackEvent = (event, trackElement) => {
 };
 
 const getHeatmapCanvasRect = (heatmapElement) => {
-    const canvasElement = heatmapElement?.shadowRoot?.querySelector?.('canvas')
-        || heatmapElement?.querySelector?.('canvas');
+    const canvasElement = heatmapElement?.querySelector?.('canvas');
     const canvasRect = canvasElement?.getBoundingClientRect?.();
 
     if (canvasRect?.width) {
@@ -277,12 +276,11 @@ const refreshNightingaleDimensions = (element) => {
 const TOOLTIP_VIEWPORT_MARGIN = 12;
 
 const clampHeatmapTooltipsToViewport = (heatmapElement) => {
-    const root = heatmapElement?.shadowRoot;
-    if (!root || typeof window === 'undefined') {
+    if (!heatmapElement || typeof window === 'undefined') {
         return;
     }
 
-    root.querySelectorAll('.heatmap-tooltip-box, .heatmap-pinned-tooltip-box').forEach((tooltip) => {
+    heatmapElement.querySelectorAll('.heatmap-tooltip-box, .heatmap-pinned-tooltip-box').forEach((tooltip) => {
         const rect = tooltip.getBoundingClientRect();
         if (!rect.width && !rect.height) {
             return;
@@ -297,7 +295,7 @@ const clampHeatmapTooltipsToViewport = (heatmapElement) => {
         const leftOverflow = TOOLTIP_VIEWPORT_MARGIN - rect.left;
 
         if (rightOverflow > 0) {
-            tooltip.style.left = `${Math.max(0, left - rightOverflow)}px`;
+            tooltip.style.left = `${left - rightOverflow}px`;
         } else if (leftOverflow > 0) {
             tooltip.style.left = `${left + leftOverflow}px`;
         }
@@ -305,8 +303,7 @@ const clampHeatmapTooltipsToViewport = (heatmapElement) => {
 };
 
 const attachHeatmapTooltipViewportGuard = (heatmapElement) => {
-    const root = heatmapElement?.shadowRoot;
-    if (!root || heatmapElement.__dspaTooltipViewportGuardAttached) {
+    if (!heatmapElement || heatmapElement.__dspaTooltipViewportGuardAttached) {
         return;
     }
 
@@ -314,8 +311,8 @@ const attachHeatmapTooltipViewportGuard = (heatmapElement) => {
         requestAnimationFrame(() => clampHeatmapTooltipsToViewport(heatmapElement));
     };
 
-    root.addEventListener('mousemove', clampAfterTooltipUpdate);
-    root.addEventListener('click', clampAfterTooltipUpdate);
+    heatmapElement.addEventListener('mousemove', clampAfterTooltipUpdate);
+    heatmapElement.addEventListener('click', clampAfterTooltipUpdate);
     heatmapElement.__dspaTooltipViewportGuardAttached = true;
 };
 const isDisplayRangeChangeDetail = (detail) => (
@@ -358,7 +355,7 @@ const allowHeatmapRangePropagation = (heatmapElement) => {
     }, 1000);
 };
 
-const applyHeatmapDataset = (heatmapElement, dataset) => {
+const applyHeatmapDataset = (heatmapElement, dataset, { color = getLipScoreColor, tooltip = getHeatmapTooltip } = {}) => {
     if (
         !heatmapElement ||
         dataset.yDomain.length === 0 ||
@@ -376,8 +373,8 @@ const applyHeatmapDataset = (heatmapElement, dataset) => {
         }
 
         syncHeatmapWidthToHost(heatmapElement);
-        heatmapElement.heatmapInstance.setColor((d) => getLipScoreColor(d.score));
-        heatmapElement.heatmapInstance.setTooltip((d) => getHeatmapTooltip(d));
+        heatmapElement.heatmapInstance.setColor((d) => color(d.score));
+        heatmapElement.heatmapInstance.setTooltip(tooltip);
         attachHeatmapTooltipViewportGuard(heatmapElement);
         clampHeatmapTooltipsToViewport(heatmapElement);
 
@@ -490,6 +487,7 @@ const NightingaleComponent = ({
     const residuelevelContainer = useRef(null);
     const multipleExperimentsContainer = useRef(null);
     const scoreBarcodeContainer = useRef(null);
+    const plddtScoreBarcodeContainer = useRef(null);
     const matchingScoreBarcodeContainer = useRef(null);
     const otherScoreBarcodeContainer = useRef(null);
     
@@ -556,9 +554,16 @@ const NightingaleComponent = ({
     }), [featureSequenceLength, trackHeight]);
     const defaultLipScoreString = JSON.stringify(Array(sequenceLength).fill(null));
     const [lipscoreString, setLipscoreString] = useState(defaultLipScoreString);
+    const [plddtData, setPlddtData] = useState(null);
 
     const proteinName = proteinData.proteinName;
     const shouldSplitHeatmap = Boolean(masterCondition);
+    const currentPlddtScores = plddtData?.proteinAccession === proteinName
+        && plddtData?.structureId === selectedPdbId ? plddtData.scores : null;
+    const plddtHeatmapDataset = useMemo(
+        () => createPlddtHeatmapDataset(currentPlddtScores, sequenceLength),
+        [currentPlddtScores, sequenceLength]
+    );
     const heatmapRows = useMemo(() => buildHeatmapRows(
         proteinData.differentialAbundanceData,
         proteinData.experimentMetaData
@@ -585,6 +590,22 @@ const NightingaleComponent = ({
         () => createHeatmapDataset(otherHeatmapRows, sequenceLength),
         [otherHeatmapRows, sequenceLength]
     );
+    const heatmapConfigurations = useMemo(() => [
+        ...(shouldSplitHeatmap
+            ? [
+                { ref: matchingScoreBarcodeContainer, dataset: matchingHeatmapDataset },
+                { ref: otherScoreBarcodeContainer, dataset: otherHeatmapDataset },
+            ]
+            : [
+                { ref: scoreBarcodeContainer, dataset: defaultHeatmapDataset },
+            ]),
+        {
+            ref: plddtScoreBarcodeContainer,
+            dataset: plddtHeatmapDataset,
+            options: { color: getPlddtScoreColor, tooltip: getPlddtTooltip },
+        },
+    ], [shouldSplitHeatmap, defaultHeatmapDataset,
+        matchingHeatmapDataset, otherHeatmapDataset, plddtHeatmapDataset]);
  
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
     const hasSiteData = proteinData.featuresData.features.some(({ type }) => type === "SITE");
@@ -881,6 +902,23 @@ const NightingaleComponent = ({
       };
 
     useEffect(() => {
+        const structureElement = structureRef.current;
+        setPlddtData(null);
+        if (!structureElement) return undefined;
+
+        const receivePlddtData = (detail) => {
+            if (detail?.proteinAccession === proteinName && detail?.structureId === selectedPdbId
+                && Array.isArray(detail.scores)) {
+                setPlddtData(detail);
+            }
+        };
+        const handlePlddtChange = (event) => receivePlddtData(event.detail);
+        structureElement.addEventListener('plddt-change', handlePlddtChange);
+        receivePlddtData(structureElement.plddtData);
+        return () => structureElement.removeEventListener('plddt-change', handlePlddtChange);
+    }, [proteinName, selectedPdbId]);
+
+    useEffect(() => {
         if (!proteinName || !selectedPdbId) {
             return;
         }
@@ -914,37 +952,17 @@ const NightingaleComponent = ({
     }, [proteinData.barcodeSequence]);
 
     useEffect(() => {
+        let isCancelled = false;
         customElements.whenDefined("nightingale-sequence-heatmap").then(() => {
-            const heatmapConfigurations = shouldSplitHeatmap
-                ? [
-                    {
-                        ref: matchingScoreBarcodeContainer,
-                        dataset: matchingHeatmapDataset,
-                    },
-                    {
-                        ref: otherScoreBarcodeContainer,
-                        dataset: otherHeatmapDataset,
-                    },
-                ]
-                : [
-                    {
-                        ref: scoreBarcodeContainer,
-                        dataset: defaultHeatmapDataset,
-                    },
-                ];
-
-            heatmapConfigurations.forEach(({ ref, dataset }) => {
+            if (isCancelled) return;
+            heatmapConfigurations.forEach(({ ref, dataset, options }) => {
                 if (ref.current && checkDimensions(ref.current)) {
-                    applyHeatmapDataset(ref.current, dataset);
+                    applyHeatmapDataset(ref.current, dataset, options);
                 }
             });
         });
-    }, [
-        shouldSplitHeatmap,
-        defaultHeatmapDataset,
-        matchingHeatmapDataset,
-        otherHeatmapDataset,
-    ]);
+        return () => { isCancelled = true; };
+    }, [heatmapConfigurations]);
 
     useEffect(() => {
         if (!showHeatmap) {
@@ -960,24 +978,6 @@ const NightingaleComponent = ({
             if (isCancelled) {
                 return;
             }
-
-            const heatmapConfigurations = shouldSplitHeatmap
-                ? [
-                    {
-                        ref: matchingScoreBarcodeContainer,
-                        dataset: matchingHeatmapDataset,
-                    },
-                    {
-                        ref: otherScoreBarcodeContainer,
-                        dataset: otherHeatmapDataset,
-                    },
-                ]
-                : [
-                    {
-                        ref: scoreBarcodeContainer,
-                        dataset: defaultHeatmapDataset,
-                    },
-                ];
 
             heatmapConfigurations.forEach(({ ref }) => {
                 const heatmapElement = ref.current;
@@ -1023,9 +1023,9 @@ const NightingaleComponent = ({
             });
 
             const handleResize = () => {
-                heatmapConfigurations.forEach(({ ref, dataset }) => {
+                heatmapConfigurations.forEach(({ ref, dataset, options }) => {
                     if (ref.current && checkDimensions(ref.current)) {
-                        applyHeatmapDataset(ref.current, dataset);
+                        applyHeatmapDataset(ref.current, dataset, options);
                     }
                 });
             };
@@ -1056,10 +1056,7 @@ const NightingaleComponent = ({
         };
     }, [
         showHeatmap,
-        shouldSplitHeatmap,
-        defaultHeatmapDataset,
-        matchingHeatmapDataset,
-        otherHeatmapDataset,
+        heatmapConfigurations,
     ]);
 
     // Toggle tick visibility: hide ticks when sequence letters are visible, show when hidden
@@ -1068,9 +1065,7 @@ const NightingaleComponent = ({
         if (!seqEl) return;
 
         const updateTickVisibility = () => {
-            const svg = seqEl.shadowRoot
-                ? seqEl.shadowRoot.querySelector('svg')
-                : seqEl.querySelector('svg');
+            const svg = seqEl.querySelector('svg');
             if (!svg) return;
             const hasLetters = svg.querySelectorAll('text.base').length > 0;
             svg.querySelectorAll('.tick text').forEach(tick => {
@@ -1080,9 +1075,7 @@ const NightingaleComponent = ({
 
         const observer = new MutationObserver(updateTickVisibility);
         const startObserving = () => {
-            const svg = seqEl.shadowRoot
-                ? seqEl.shadowRoot.querySelector('svg')
-                : seqEl.querySelector('svg');
+            const svg = seqEl.querySelector('svg');
             if (svg) {
                 observer.observe(svg, { childList: true, subtree: true });
                 updateTickVisibility();
@@ -1275,6 +1268,41 @@ const NightingaleComponent = ({
                                     margin-color={heatmapAttributes["margin-color"]}
                                     style={{ display: 'block', width: '100%' }}
                                 />
+                            </td>
+                        </tr>
+                    )}
+
+                    {showHeatmap && (
+                        <tr>
+                            <td title="AlphaFold prediction confidence (0–100)">pLDDT score</td>
+                            <td style={{ width: '100%', overflow: 'visible' }}>
+                                <nightingale-sequence-heatmap
+                                    ref={plddtScoreBarcodeContainer}
+                                    heatmap-id="seq-heatmap-plddt"
+                                    min-width={heatmapAttributes["min-width"]}
+                                    length={sequenceLength}
+                                    height="21"
+                                    display-start="1"
+                                    display-end={sequenceLength}
+                                    highlight-event="onmouseover"
+                                    margin-left={heatmapAttributes["margin-left"]}
+                                    margin-right={heatmapAttributes["margin-right"]}
+                                    margin-color={heatmapAttributes["margin-color"]}
+                                    style={{ display: 'block', width: '100%' }}
+                                />
+                                <div
+                                    className="plddt-confidence-legend"
+                                    aria-label="Confidence"
+                                    style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '6px 16px', fontSize: '12px', marginTop: '6px' }}
+                                >
+                                    <strong>Confidence:</strong>
+                                    {PLDDT_CONFIDENCE_SCALE.map(({ label, color }) => (
+                                        <span key={color} style={{ display: 'inline-flex', alignItems: 'center', gap: '5px' }}>
+                                            <span aria-hidden="true" style={{ display: 'inline-block', width: '14px', height: '14px', flexShrink: 0, backgroundColor: color }} />
+                                            {label}
+                                        </span>
+                                    ))}
+                                </div>
                             </td>
                         </tr>
                     )}

@@ -14,6 +14,17 @@
     visibility: visible; 
 }
 
+nightingale-sequence-heatmap .heatmap-tooltip-box,
+nightingale-sequence-heatmap .heatmap-pinned-tooltip-box {
+    transform: translateX(calc(-100% - 8px));
+}
+
+nightingale-sequence-heatmap .heatmap-pinned-tooltip-pin {
+    left: auto;
+    right: 0;
+    transform: scaleX(-1);
+}
+
 #nightingale-manager-container {
     width: 100%;
     max-width: 100%;
