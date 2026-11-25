@@ -12,7 +12,8 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    # Playwright 1.60 does not support Ubuntu 26.04; keep a supported runner.
+    runs-on: ubuntu-24.04
     strategy:
       matrix:
         node-version: [22.x]
