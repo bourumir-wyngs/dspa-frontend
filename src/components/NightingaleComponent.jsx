@@ -274,46 +274,72 @@ const refreshNightingaleDimensions = (element) => {
 
 
 const TOOLTIP_VIEWPORT_MARGIN = 12;
+const HEATMAP_TOOLTIP_SELECTOR = '.heatmap-tooltip-box, .heatmap-pinned-tooltip-box';
 
 const clampHeatmapTooltipsToViewport = (heatmapElement) => {
-    if (!heatmapElement || typeof window === 'undefined') {
+    if (!heatmapElement?.isConnected || typeof window === 'undefined') {
         return;
     }
 
-    heatmapElement.querySelectorAll('.heatmap-tooltip-box, .heatmap-pinned-tooltip-box').forEach((tooltip) => {
+    heatmapElement.querySelectorAll(HEATMAP_TOOLTIP_SELECTOR).forEach((tooltip) => {
+        // Keep the node inside the heatmap: its renderer owns updates, links,
+        // and the pinned close button. A popover escapes ancestor clipping
+        // without moving the node out of that renderer's reach.
+        const canvasRect = tooltip.parentElement.getBoundingClientRect();
+        const localLeft = parseFloat(tooltip.style.left) || 0;
+        const localBottom = parseFloat(tooltip.style.bottom) || 0;
+        const left = canvasRect.left + localLeft;
+        tooltip.classList.add('heatmap-tooltip-overlay');
+        tooltip.style.setProperty('--heatmap-tooltip-left', `${left}px`);
+        tooltip.style.setProperty('--heatmap-tooltip-bottom', `${window.innerHeight - canvasRect.bottom + localBottom}px`);
+
+        if (typeof tooltip.showPopover === 'function') {
+            tooltip.setAttribute('popover', 'manual');
+            if (!tooltip.matches(':popover-open')) tooltip.showPopover();
+        }
+
         const rect = tooltip.getBoundingClientRect();
         if (!rect.width && !rect.height) {
             return;
         }
 
-        let left = parseFloat(tooltip.style.left || '0');
-        if (!Number.isFinite(left)) {
-            left = 0;
-        }
-
         const rightOverflow = rect.right - (window.innerWidth - TOOLTIP_VIEWPORT_MARGIN);
         const leftOverflow = TOOLTIP_VIEWPORT_MARGIN - rect.left;
 
+        // Leave inline left/bottom in canvas coordinates for subsequent
+        // library updates; only our CSS variables use viewport coordinates.
         if (rightOverflow > 0) {
-            tooltip.style.left = `${left - rightOverflow}px`;
+            tooltip.style.setProperty('--heatmap-tooltip-left', `${left - rightOverflow}px`);
         } else if (leftOverflow > 0) {
-            tooltip.style.left = `${left + leftOverflow}px`;
+            tooltip.style.setProperty('--heatmap-tooltip-left', `${left + leftOverflow}px`);
         }
     });
 };
 
 const attachHeatmapTooltipViewportGuard = (heatmapElement) => {
-    if (!heatmapElement || heatmapElement.__dspaTooltipViewportGuardAttached) {
+    if (!heatmapElement?.isConnected || heatmapElement.__dspaTooltipViewportGuardCleanup) {
         return;
     }
 
-    const clampAfterTooltipUpdate = () => {
-        requestAnimationFrame(() => clampHeatmapTooltipsToViewport(heatmapElement));
+    const updateTooltips = () => clampHeatmapTooltipsToViewport(heatmapElement);
+    // Subscribe after the built-in tooltip renderer, so positioning happens
+    // before paint, including pinned-tooltip changes from zoom and resize.
+    const subscriptions = ['hover', 'select', 'zoom', 'resize'].map((event) => (
+        heatmapElement.heatmapInstance?.events?.[event]?.subscribe(updateTooltips)
+    ));
+    window.addEventListener('scroll', updateTooltips, true);
+    heatmapElement.__dspaTooltipViewportGuardCleanup = () => {
+        subscriptions.forEach((subscription) => subscription?.unsubscribe());
+        window.removeEventListener('scroll', updateTooltips, true);
+        heatmapElement.querySelectorAll(HEATMAP_TOOLTIP_SELECTOR).forEach((tooltip) => {
+            if (tooltip.hasAttribute('popover')) {
+                if (tooltip.matches(':popover-open')) tooltip.hidePopover();
+                tooltip.removeAttribute('popover');
+            }
+            tooltip.classList.remove('heatmap-tooltip-overlay');
+        });
+        delete heatmapElement.__dspaTooltipViewportGuardCleanup;
     };
-
-    heatmapElement.addEventListener('mousemove', clampAfterTooltipUpdate);
-    heatmapElement.addEventListener('click', clampAfterTooltipUpdate);
-    heatmapElement.__dspaTooltipViewportGuardAttached = true;
 };
 const isDisplayRangeChangeDetail = (detail) => (
     typeof detail === 'object' &&
@@ -1013,6 +1039,7 @@ const NightingaleComponent = ({
                 heatmapElement.addEventListener('mousemove', handleHeatmapMouseMove);
                 heatmapElement.addEventListener('mouseleave', handleHeatmapMouseLeave);
                 cleanupCallbacks.push(() => {
+                    heatmapElement.__dspaTooltipViewportGuardCleanup?.();
                     heatmapElement.removeEventListener('wheel', handleHeatmapWheel, true);
                     heatmapElement.removeEventListener('change', handleHeatmapHighlightChange);
                     heatmapElement.removeEventListener('mousemove', handleHeatmapMouseMove);

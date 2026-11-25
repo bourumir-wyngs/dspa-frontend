@@ -19,6 +19,23 @@ nightingale-sequence-heatmap .heatmap-pinned-tooltip-box {
     transform: translateX(calc(-100% - 8px));
 }
 
+nightingale-sequence-heatmap .heatmap-tooltip-overlay {
+    position: fixed !important;
+    left: var(--heatmap-tooltip-left) !important;
+    bottom: var(--heatmap-tooltip-bottom) !important;
+    top: auto;
+    right: auto;
+    width: max-content;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    overflow: visible;
+    /* Fixed positioning also supports browsers without the Popover API. */
+    z-index: 2147483647;
+}
+
 nightingale-sequence-heatmap .heatmap-pinned-tooltip-pin {
     left: auto;
     right: 0;
