@@ -5,10 +5,12 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 const COLOR_HIGHLIGHTED_PROTEIN = '#ffa500';
 const COLOR_UP = '#d62728';
 const COLOR_DOWN = '#1f77b4';
+const COLOR_UP_RAW_P = '#ed8282';
+const COLOR_DOWN_RAW_P = '#84bfe8';
 const COLOR_OTHER = '#d9d9d9';
 
 // Significance cutoffs for volcano plots
-const CUTOFF_ADJ_P = 0.05;
+const CUTOFF_P = 0.05;
 const CUTOFF_LOG2FC = 1;
 const COLOR_CUTOFF_LINE = '#7f7f7f';
 
@@ -30,11 +32,14 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
   const getBaseFill = useCallback((d) => {
     if (d.pg_protein_accessions === highlightedProtein) return COLOR_HIGHLIGHTED_PROTEIN;
 
-    const isSignificant = (d.adj_pval != null) && (d.adj_pval < CUTOFF_ADJ_P) && (Math.abs(d.diff) > CUTOFF_LOG2FC);
-    if (!isSignificant) return COLOR_OTHER;
+    if (!(Math.abs(d.diff) > CUTOFF_LOG2FC)) return COLOR_OTHER;
 
-    if (d.diff > 0) return COLOR_UP; // significant up
-    if (d.diff < 0) return COLOR_DOWN; // significant down
+    if (d.adj_pval != null && d.adj_pval < CUTOFF_P) {
+      return d.diff > 0 ? COLOR_UP : COLOR_DOWN;
+    }
+    if (d.pval != null && d.pval < CUTOFF_P) {
+      return d.diff > 0 ? COLOR_UP_RAW_P : COLOR_DOWN_RAW_P;
+    }
     return COLOR_OTHER;
   }, [highlightedProtein]);
 
@@ -66,7 +71,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
   function downloadCSV() {
     if (!Array.isArray(differentialAbundanceDataList)) return;
 
-    const rows = [["Experiment ID", "Comparison", "Peptide Key", "Protein Accession", "Fold Change (log2)", "q-value"]];
+    const rows = [["Experiment ID", "Comparison", "Peptide Key", "Protein Accession", "Fold Change (log2)", "p-value"]];
     differentialAbundanceDataList.forEach(exp => {
       exp.data.forEach(d => {
         rows.push([
@@ -75,7 +80,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
           d.pep_grouping_key,
           d.pg_protein_accessions,
           d.diff,
-          d.adj_pval
+          d.pval
         ]);
       });
     });
@@ -107,8 +112,8 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
     });
 
     const allData = sortedDataList.flatMap(exp => exp.data);
-    const cutoffY = -Math.log10(CUTOFF_ADJ_P);
-    const yMax = Math.max(d3.max(allData, d => -Math.log10(d.adj_pval)) ?? 0, cutoffY);
+    const cutoffY = -Math.log10(CUTOFF_P);
+    const yMax = Math.max(d3.max(allData, d => -Math.log10(d.pval)) ?? 0, cutoffY);
     
     const plotsPerPage = 2;
     const start = showAll ? 0 : page * plotsPerPage;
@@ -220,14 +225,14 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         .attr("x", -height / 2)
         .attr("y", -40)
         .attr("font-size", "12px")
-        .text("-log10 Adjusted P-Value");
+        .text("-log10 P-Value");
 
       g.selectAll("circle")
         .data(data)
         .enter()
         .append("circle")
         .attr("cx", d => x(d.diff))
-        .attr("cy", d => y(-Math.log10(d.adj_pval)))
+        .attr("cy", d => y(-Math.log10(d.pval)))
         .attr("r", 3)
         .attr("class", d => `pep-key-${cssSafeKey(d.pep_grouping_key)}`)
         .style("fill", d => getBaseFill(d))
@@ -324,11 +329,19 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
         )}
         <div className="volcano-plot-legend-item">
           <div style={{ backgroundColor: COLOR_UP, borderRadius: '50%', width: 18, height: 18 }} />
-          <span>Up (adj.p &lt; {CUTOFF_ADJ_P}, log2FC &gt; {CUTOFF_LOG2FC})</span>
+          <span>Up (adj.p &lt; {CUTOFF_P}, log2FC &gt; {CUTOFF_LOG2FC})</span>
         </div>
         <div className="volcano-plot-legend-item">
           <div style={{ backgroundColor: COLOR_DOWN, borderRadius: '50%', width: 18, height: 18 }} />
-          <span>Down (adj.p &lt; {CUTOFF_ADJ_P}, log2FC &lt; -{CUTOFF_LOG2FC})</span>
+          <span>Down (adj.p &lt; {CUTOFF_P}, log2FC &lt; -{CUTOFF_LOG2FC})</span>
+        </div>
+        <div className="volcano-plot-legend-item">
+          <div style={{ backgroundColor: COLOR_UP_RAW_P, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Up (p &lt; {CUTOFF_P}, log2FC &gt; {CUTOFF_LOG2FC})</span>
+        </div>
+        <div className="volcano-plot-legend-item">
+          <div style={{ backgroundColor: COLOR_DOWN_RAW_P, borderRadius: '50%', width: 18, height: 18 }} />
+          <span>Down (p &lt; {CUTOFF_P}, log2FC &lt; -{CUTOFF_LOG2FC})</span>
         </div>
         <div className="volcano-plot-legend-item">
           <div style={{ backgroundColor: COLOR_OTHER, borderRadius: '50%', width: 18, height: 18 }} />
@@ -383,7 +396,7 @@ const VolcanoPlot = ({ differentialAbundanceDataList, highlightedProtein=null}) 
 
 function getAxisRange(data) {
   const xExtent = d3.extent(data, d => d.diff);
-  const yValues = data.map(d => -Math.log10(d.adj_pval));
+  const yValues = data.map(d => -Math.log10(d.pval));
   const yExtent = d3.extent(yValues);
   return {
     xRange: Math.abs(xExtent[1] - xExtent[0]),

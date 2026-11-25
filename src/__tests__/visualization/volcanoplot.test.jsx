@@ -15,18 +15,21 @@ const makeData = () => [
         pep_grouping_key: 'pep/shared key',
         pg_protein_accessions: 'P-HIGHLIGHT',
         diff: -3,
-        adj_pval: 0.001,
+        pval: 0.001,
+        adj_pval: 0.5,
       },
       {
         pep_grouping_key: 'pep-up',
         pg_protein_accessions: 'P-UP',
         diff: 2.2,
-        adj_pval: 0.01,
+        pval: 0.01,
+        adj_pval: 0.5,
       },
       {
         pep_grouping_key: 'pep-neutral',
         pg_protein_accessions: 'P-NEUTRAL',
         diff: 0.25,
+        pval: 0.5,
         adj_pval: 0.5,
       },
     ],
@@ -39,7 +42,8 @@ const makeData = () => [
         pep_grouping_key: 'pep/shared key',
         pg_protein_accessions: 'P-DUPLICATE',
         diff: -1.8,
-        adj_pval: 0.01,
+        pval: 0.01,
+        adj_pval: 0.5,
       },
     ],
   },
@@ -51,7 +55,8 @@ const makeData = () => [
         pep_grouping_key: 'pep-third',
         pg_protein_accessions: 'P-THIRD',
         diff: 1.3,
-        adj_pval: 0.2,
+        pval: 0.2,
+        adj_pval: 0.5,
       },
     ],
   },
@@ -63,13 +68,15 @@ describe('VolcanoPlot', () => {
 
     expect(screen.getByText('Up (adj.p < 0.05, log2FC > 1)')).toBeInTheDocument();
     expect(screen.getByText('Down (adj.p < 0.05, log2FC < -1)')).toBeInTheDocument();
+    expect(screen.getByText('Up (p < 0.05, log2FC > 1)')).toBeInTheDocument();
+    expect(screen.getByText('Down (p < 0.05, log2FC < -1)')).toBeInTheDocument();
     expect(screen.getByText('Not significant')).toBeInTheDocument();
     expect(screen.getByText('Selected Peptide')).toBeInTheDocument();
     expect(screen.getByText('Download CSV')).toBeInTheDocument();
     expect(container.querySelector('.plot-wrapper')).not.toBeInTheDocument();
   });
 
-  it('draws the first page of volcano plots with significance and highlighted-protein styling', () => {
+  it('draws the first page using raw p-values for coordinates and significance, with highlighted-protein styling', () => {
     const { container } = render(
       <VolcanoPlot
         differentialAbundanceDataList={makeData()}
@@ -82,6 +89,7 @@ describe('VolcanoPlot', () => {
     expect(container.querySelectorAll('.plot-wrapper')).toHaveLength(2);
     expect(container).toHaveTextContent('Wide Dose');
     expect(container).toHaveTextContent('Duplicate Dose');
+    expect(screen.getAllByText('-log10 P-Value')).toHaveLength(2);
 
     const highlighted = container.querySelector('.pep-key-pep_shared_key');
     const significantUp = container.querySelector('.pep-key-pep-up');
@@ -90,8 +98,48 @@ describe('VolcanoPlot', () => {
     expect(highlighted).toHaveStyle({ fill: '#ffa500' });
     expect(highlighted).toHaveAttribute('stroke', 'black');
     expect(highlighted).toHaveAttribute('stroke-width', '1.5');
-    expect(significantUp).toHaveStyle({ fill: '#d62728' });
+    expect(significantUp).toHaveStyle({ fill: '#ed8282' });
     expect(neutral).toHaveStyle({ fill: '#d9d9d9' });
+
+    // Raw p = 0.001 sets the shared axis maximum to 3; p = 0.01 plots at 2.
+    // Both adjusted p-values are 0.5, so they must not determine the coordinates.
+    expect(Number(highlighted.getAttribute('cy'))).toBeCloseTo(0);
+    expect(Number(significantUp.getAttribute('cy'))).toBeCloseTo(190 * (1 - 2.5 / 3.5));
+  });
+
+  it('prioritizes adjusted significance, distinguishes raw-only significance, and restores colors after hovering', () => {
+    const cases = [
+      { key: 'adjusted-up', diff: 2, pval: 0.001, adj_pval: 0.01, color: '#d62728' },
+      { key: 'adjusted-down', diff: -2, pval: 0.001, adj_pval: 0.01, color: '#1f77b4' },
+      { key: 'raw-up', diff: 2, pval: 0.01, adj_pval: 0.2, color: '#ed8282' },
+      { key: 'raw-down', diff: -2, pval: 0.01, adj_pval: 0.2, color: '#84bfe8' },
+      { key: 'not-significant', diff: 2, pval: 0.2, adj_pval: 0.5, color: '#d9d9d9' },
+      { key: 'p-boundary', diff: 2, pval: 0.05, adj_pval: 0.5, color: '#d9d9d9' },
+      { key: 'effect-boundary', diff: 1, pval: 0.001, adj_pval: 0.01, color: '#d9d9d9' },
+      { key: 'highlighted', diff: -2, pval: 0.001, adj_pval: 0.01, color: '#ffa500' },
+    ];
+    const data = cases.map(({ key, diff, pval, adj_pval }) => ({
+      pep_grouping_key: key,
+      pg_protein_accessions: key === 'highlighted' ? 'P-HIGHLIGHT' : `P-${key}`,
+      diff,
+      pval,
+      adj_pval,
+    }));
+    const { container } = render(
+      <VolcanoPlot
+        differentialAbundanceDataList={[{ experimentID: 'EXP-COLORS', data }]}
+        highlightedProtein="P-HIGHLIGHT"
+      />
+    );
+
+    cases.forEach(({ key, color }) => {
+      const circle = container.querySelector(`.pep-key-${key}`);
+      expect(circle).toHaveStyle({ fill: color });
+      fireEvent.mouseOver(circle);
+      expect(circle).toHaveAttribute('fill', '#289b22');
+      fireEvent.mouseOut(circle);
+      expect(circle).toHaveAttribute('fill', color);
+    });
   });
 
   it('highlights duplicate peptide keys across visible plots and updates the HTML tooltip', () => {
@@ -123,6 +171,8 @@ describe('VolcanoPlot', () => {
     matchingPeptides.forEach(circle => {
       expect(circle).toHaveAttribute('r', '3');
     });
+    expect(matchingPeptides[0]).toHaveAttribute('fill', '#ffa500');
+    expect(matchingPeptides[1]).toHaveAttribute('fill', '#84bfe8');
     expect(tooltip).toHaveStyle({ visibility: 'hidden', opacity: '0' });
   });
 
@@ -171,7 +221,7 @@ describe('VolcanoPlot', () => {
       const csvText = csvBlob.parts.join('');
       expect(csvBlob.options).toEqual({ type: 'text/csv;charset=utf-8;' });
       expect(csvText).toContain(
-        'Experiment ID,Comparison,Peptide Key,Protein Accession,Fold Change (log2),q-value'
+        'Experiment ID,Comparison,Peptide Key,Protein Accession,Fold Change (log2),p-value'
       );
       expect(csvText).toContain('EXP-WIDE,Wide Dose,pep-up,P-UP,2.2,0.01');
     } finally {
