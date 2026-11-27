@@ -508,7 +508,22 @@ const NightingaleComponent = ({
     const siteRef = useRef(null);
     const structureRef = useRef(null);
 
-    const [mappedFeatures, setMappedFeatures] = useState([]);
+    const mappedFeatures = useMemo(() => (
+        (proteinData.featuresData?.features || []).flatMap(feature => {
+            const mappedFeature = { ...feature, start: feature.start || feature.begin };
+            if (String(feature.type || '').toUpperCase() !== 'ACT_SITE') {
+                return [mappedFeature];
+            }
+
+            // Share parsed active-site positions between the annotation track and structure.
+            const start = Number(mappedFeature.start);
+            const end = Number(feature.end ?? start);
+            if (!Number.isInteger(start) || !Number.isInteger(end) || start <= 0 || end < start) {
+                return [];
+            }
+            return [{ ...mappedFeature, start, end }];
+        })
+    ), [proteinData.featuresData?.features]);
 
     const residuelevelContainer = useRef(null);
     const multipleExperimentsContainer = useRef(null);
@@ -519,6 +534,7 @@ const NightingaleComponent = ({
     
     const [selectedExperiment, setSelectedExperiment] = useState('');
     const [colorByPlddt, setColorByPlddt] = useState(false);
+    const [highlightActiveSite, setHighlightActiveSite] = useState(true);
     const availableExperimentIds = useMemo(
         () => proteinData.lipscoreList?.map(entry => entry.experimentID) || [],
         [proteinData.lipscoreList]
@@ -580,6 +596,11 @@ const NightingaleComponent = ({
         "display-end": featureSequenceLength,
     }), [featureSequenceLength, trackHeight]);
     const defaultLipScoreString = JSON.stringify(Array(sequenceLength).fill(null));
+    const activeSiteRangesString = useMemo(() => JSON.stringify(
+        mappedFeatures
+            .filter(feature => String(feature.type || '').toUpperCase() === 'ACT_SITE')
+            .map(({ start, end }) => ({ start, end }))
+    ), [mappedFeatures]);
     const [lipscoreString, setLipscoreString] = useState(defaultLipScoreString);
     const [plddtData, setPlddtData] = useState(null);
 
@@ -637,7 +658,7 @@ const NightingaleComponent = ({
     const hasDomainData = proteinData.featuresData?.features?.some(({ type }) => type === "DOMAIN");
     const hasSiteData = proteinData.featuresData.features.some(({ type }) => type === "SITE");
     const hasBindingData = proteinData.featuresData.features.some(({ type }) => type === "BINDING");
-    const hasActiveSiteData = proteinData.featuresData.features.some(({ type }) => type === "ACT_SITE");
+    const hasActiveSiteData = mappedFeatures.some(({ type }) => String(type || '').toUpperCase() === 'ACT_SITE');
     const hasMetalData = proteinData.featuresData.features.some(({ type }) => type === "METAL");
     const hasModifiedResidueData = proteinData.featuresData.features.some(({ type }) => type === "MOD_RES");
     const hasDisulfidData = proteinData.featuresData.features.some(({ type }) => type === "DISULFID");
@@ -775,15 +796,6 @@ const NightingaleComponent = ({
         selectedExperiment,
         sequenceLength,
     ]);
-
-    useEffect(() => {
-        if (proteinData?.featuresData?.features && trackHeight) {
-            setMappedFeatures(proteinData.featuresData.features.map(ft => ({
-                ...ft,
-                start: ft.start || ft.begin
-            })));
-        }
-    }, [proteinData, trackHeight]);
 
     useEffect(() => {
         if (!trackHeight || !featureSequence || !sequenceRef.current) {
@@ -960,6 +972,10 @@ const NightingaleComponent = ({
     }, [ proteinName, selectedPdbId, lipscoreString, colorByPlddt]);
 
     useEffect(() => {
+        structureRef.current?.setAttribute('active-site-ranges', highlightActiveSite ? activeSiteRangesString : '[]');
+    }, [activeSiteRangesString, highlightActiveSite]);
+
+    useEffect(() => {
         customElements.whenDefined("nightingale-colored-sequence").then(() => {
             if (residuelevelContainer.current && checkDimensions(residuelevelContainer.current)) {
                 residuelevelContainer.current.data = proteinData.barcodeSequence;
@@ -1117,9 +1133,12 @@ const NightingaleComponent = ({
         return () => observer.disconnect();
     }, [mappedFeatures]);
 
-    const legendData = colorByPlddt
-        ? PLDDT_CONFIDENCE_SCALE
-        : [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }));
+    const legendData = [
+        ...(colorByPlddt
+            ? PLDDT_CONFIDENCE_SCALE
+            : [...LIP_COLOR_SCALE].reverse().map(({ color, label }) => ({ color, label }))),
+        ...(hasActiveSiteData && highlightActiveSite ? [{ color: '#B59B00', label: 'Active site' }] : []),
+    ];
     const wrappedHeatmapLabelStyle = {
         whiteSpace: 'normal',
         overflowWrap: 'anywhere',
@@ -1160,6 +1179,20 @@ const NightingaleComponent = ({
                         />
                         pLDDT
                     </label>
+                    {hasActiveSiteData && (
+                        <label
+                            title="Highlight active-site residues in dark yellow, overriding the structure color scale"
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '5px', whiteSpace: 'nowrap', cursor: 'pointer' }}
+                        >
+                            <input
+                                type="checkbox"
+                                name="highlight-active-site"
+                                checked={highlightActiveSite}
+                                onChange={(event) => setHighlightActiveSite(event.target.checked)}
+                            />
+                            Active site
+                        </label>
+                    )}
                 </div>
                 {experimentIDsList.length > 5 ? (
                     <div className="experiment-dropdown">

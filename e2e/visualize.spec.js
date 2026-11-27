@@ -74,7 +74,7 @@ test('renders the protein sequence and structural barcode viewer', async ({ page
 
   await expect(page.getByText('Domain', { exact: true })).toBeVisible();
   await expect(page.getByText('Binding site', { exact: true })).toBeVisible();
-  await expect(page.getByText('Active site', { exact: true })).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Active site', exact: true })).toBeVisible();
   await expect(page.getByText('Alpha helix', { exact: true })).toBeVisible();
   await expect(page.getByText('Turn', { exact: true })).toBeVisible();
 

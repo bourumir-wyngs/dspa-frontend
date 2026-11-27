@@ -864,6 +864,138 @@ describe('NightingaleComponent Rendering', () => {
         expect(hasStructuralBarcode).toBe(true);
     });
 
+    it('shares parsed active-site ranges between the annotation track and structure while preserving the base color mode and LiP scores', async () => {
+        const proteinData = {
+            ...mockProteinData,
+            featuresData: {
+                ...mockProteinData.featuresData,
+                features: [
+                    { type: 'ACT_SITE', begin: '7', end: '7' },
+                    { type: 'act_site', start: '2', end: '3' },
+                    { type: 'ACT_SITE', start: '9' },
+                    { type: 'BINDING', begin: '4', end: '5' },
+                    { type: 'ACT_SITE', start: 0, begin: 5, end: 6 },
+                    { type: 'ACT_SITE', start: -1, end: 2 },
+                    { type: 'ACT_SITE', start: 'invalid', end: 3 },
+                    { type: 'ACT_SITE', start: 2.5, end: 3 },
+                    { type: 'ACT_SITE', start: 6, end: 5 },
+                    { type: 'ACT_SITE', start: 3, end: Infinity },
+                ],
+            },
+        };
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={proteinData}
+                pdbIds={[]}
+                selectedPdbId="AF-P12345-F1"
+                setSelectedPdbId={() => {}}
+            />
+        );
+        const structure = container.querySelector('nightingale-structure');
+        const activeSiteTrack = container.querySelector('#act_site');
+        const expectedRanges = [
+            { start: 7, end: 7 },
+            { start: 2, end: 3 },
+            { start: 9, end: 9 },
+            { start: 5, end: 6 },
+        ];
+
+        await waitFor(() => {
+            expect(JSON.parse(structure.getAttribute('active-site-ranges'))).toEqual(expectedRanges);
+            expect(activeSiteTrack.data?.map(({ start, end }) => ({ start, end }))).toEqual(expectedRanges);
+        });
+        expect(structure).toHaveAttribute('protein-accession', 'P12345');
+        expect(structure).toHaveAttribute('color-by', 'lip');
+        expect(structure).toHaveAttribute('lipscore-array', JSON.stringify(mockProteinData.lipscoreList[0].data));
+        expect(structure).toHaveAttribute('highlight-color', '#FF6699');
+        expect(structure).not.toHaveAttribute('highlight');
+        expect(screen.getByRole('checkbox', { name: 'pLDDT' })).not.toBeChecked();
+    });
+
+    it('clears the previous active-site ranges when switching to a protein with no active sites', async () => {
+        const proteinData = {
+            ...mockProteinData,
+            featuresData: {
+                ...mockProteinData.featuresData,
+                features: [{ type: 'ACT_SITE', begin: '4', end: '5' }],
+            },
+        };
+        const props = {
+            proteinData,
+            pdbIds: [],
+            selectedPdbId: 'AF-P12345-F1',
+            setSelectedPdbId: () => {},
+        };
+        const { container, rerender } = render(<NightingaleComponent {...props} />);
+        const structure = container.querySelector('nightingale-structure');
+        await waitFor(() => expect(structure).toHaveAttribute(
+            'active-site-ranges', JSON.stringify([{ start: 4, end: 5 }])
+        ));
+
+        const nextProtein = { ...mockProteinData, proteinName: 'P67890' };
+        rerender(<NightingaleComponent {...props} proteinData={nextProtein} selectedPdbId="AF-P67890-F1" />);
+
+        await waitFor(() => expect(structure).toHaveAttribute('active-site-ranges', '[]'));
+        expect(structure).toHaveAttribute('protein-accession', 'P67890');
+        expect(structure).toHaveAttribute('structure-id', 'AF-P67890-F1');
+        expect(structure).toHaveAttribute('color-by', 'lip');
+        expect(structure).not.toHaveAttribute('highlight');
+    });
+
+    it('independently forwards Active site and pLDDT toggles while preserving the annotation track and selected LiP scores', async () => {
+        const selectedScores = Array(10).fill(0.8);
+        const proteinData = {
+            ...mockProteinData,
+            lipscoreList: [
+                { experimentID: 'exp1', data: Array(10).fill(0.2) },
+                { experimentID: 'exp2', data: selectedScores },
+            ],
+            featuresData: {
+                ...mockProteinData.featuresData,
+                features: [{ type: 'ACT_SITE', begin: '4', end: '5' }],
+            },
+        };
+        const { container } = render(
+            <NightingaleComponent
+                proteinData={proteinData}
+                pdbIds={[]}
+                selectedPdbId="AF-P12345-F1"
+                setSelectedPdbId={() => {}}
+            />
+        );
+        const structure = container.querySelector('nightingale-structure');
+        const activeSiteCheckbox = screen.getByRole('checkbox', { name: 'Active site' });
+        const plddtCheckbox = screen.getByRole('checkbox', { name: 'pLDDT' });
+        const annotationTrack = container.querySelector('#act_site');
+        const selectedExperiment = screen.getByText('Experiment exp2');
+        expect(activeSiteCheckbox).toBeChecked();
+        expect(plddtCheckbox).not.toBeChecked();
+        fireEvent.click(selectedExperiment);
+
+        // These mocked-element checks verify the forwarded contract, not 3D pixel colors.
+        const expectForwardedState = async (activeSite, plddt) => {
+            await waitFor(() => {
+                expect(structure).toHaveAttribute('active-site-ranges', activeSite
+                    ? JSON.stringify([{ start: 4, end: 5 }]) : '[]');
+                expect(structure).toHaveAttribute('color-by', plddt ? 'plddt' : 'lip');
+                expect(structure).toHaveAttribute('lipscore-array', JSON.stringify(selectedScores));
+            });
+            expect(activeSiteCheckbox.checked).toBe(activeSite);
+            expect(plddtCheckbox.checked).toBe(plddt);
+            expect(selectedExperiment).toHaveClass('selected');
+            expect(screen.getByRole('cell', { name: 'Active site' }).closest('tr').querySelector('#act_site'))
+                .toBe(annotationTrack);
+        };
+
+        await expectForwardedState(true, false);
+        fireEvent.click(activeSiteCheckbox);
+        await expectForwardedState(false, false);
+        fireEvent.click(plddtCheckbox);
+        await expectForwardedState(false, true);
+        fireEvent.click(activeSiteCheckbox);
+        await expectForwardedState(true, true);
+    });
+
     it.each([
         ['protein viewer', undefined],
         ['condition view', 'CondA'],
@@ -1224,7 +1356,7 @@ describe('NightingaleComponent Rendering', () => {
             expect(screen.getByText('Turn')).toBeInTheDocument();
             expect(screen.getByText('Beta strand')).toBeInTheDocument();
             expect(screen.getByText('Binding site')).toBeInTheDocument();
-            expect(screen.getByText('Active site')).toBeInTheDocument();
+            expect(screen.getByRole('cell', { name: 'Active site' })).toBeInTheDocument();
             expect(screen.getByText('Domain')).toBeInTheDocument();
             expect(screen.getByText('Coiled-coil')).toBeInTheDocument();
             expect(screen.getByText('Metal binding')).toBeInTheDocument();
