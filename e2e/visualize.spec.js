@@ -100,3 +100,57 @@ test('renders the protein sequence and structural barcode viewer', async ({ page
   await expect.poll(() => getStructureLipScoreAt(structure, 49)).toBe(-1.3);
   await expect.poll(() => getStructureLipScoreAt(structure, 149)).toBe(-2.5);
 });
+
+test('the compiled structure component parses active-site ranges and follows its checkbox', async ({ page }) => {
+  // Keep the real custom element and its Lit lifecycle; only external data is mocked.
+  // No molecular model is needed to catch a bundle that ignores this attribute.
+  await page.route('**/alphafold.ebi.ac.uk/api/prediction/**', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: '[]',
+  }));
+  await login(page);
+  await page.goto('/visualize/P0A9P4');
+
+  const structure = page.locator('nightingale-structure');
+  await expect(structure).toBeVisible();
+  await page.evaluate(() => customElements.whenDefined('nightingale-structure'));
+  expect(await structure.evaluate((element) => {
+    const Component = customElements.get('nightingale-structure');
+    return element instanceof Component && Component.observedAttributes.includes('active-site-ranges');
+  })).toBe(true);
+  await expect(structure.locator('canvas')).toHaveCount(1);
+
+  const readActiveSiteRanges = () => structure.evaluate(async (element) => {
+    await element.updateComplete;
+    return element['active-site-ranges'];
+  });
+  const activeSiteCheckbox = page.getByRole('checkbox', { name: 'Active site', exact: true });
+  const plddtCheckbox = page.getByRole('checkbox', { name: 'pLDDT', exact: true });
+  const legendEntry = page.locator('.volcano-plot-legend > div').filter({ hasText: /^Active site$/ });
+  const activeSiteRow = page.getByRole('cell', { name: 'Active site', exact: true });
+  const expectedRanges = [{ start: 120, end: 125 }];
+
+  await expect(activeSiteCheckbox).toBeChecked();
+  await expect.poll(readActiveSiteRanges).toEqual(expectedRanges);
+  await expect(legendEntry).toBeVisible();
+  await expect(legendEntry.locator('div')).toHaveCSS('background-color', 'rgb(181, 155, 0)');
+
+  await removeWebpackDevOverlay(page);
+  await activeSiteCheckbox.uncheck();
+  await expect.poll(readActiveSiteRanges).toEqual([]);
+  await expect(legendEntry).toHaveCount(0);
+  await expect(activeSiteRow).toBeVisible();
+
+  await plddtCheckbox.check();
+  await expect.poll(readActiveSiteRanges).toEqual([]);
+  await expect(legendEntry).toHaveCount(0);
+  await activeSiteCheckbox.check();
+  await expect.poll(readActiveSiteRanges).toEqual(expectedRanges);
+  await expect(legendEntry).toBeVisible();
+
+  await plddtCheckbox.uncheck();
+  await expect.poll(readActiveSiteRanges).toEqual(expectedRanges);
+  await expect(legendEntry).toBeVisible();
+  await expect(activeSiteRow).toBeVisible();
+});

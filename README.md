@@ -28,6 +28,25 @@ Playwright tests live in `e2e/` and run against `http://localhost:3000` by defau
 
 Set `PLAYWRIGHT_BASE_URL` only if you intentionally need to point the browser at a different local frontend URL.
 
+## DSPA Nightingale bundle
+
+The frontend consumes the compiled `dist` files from
+[`DSPAtlas/dspa-nightingale-bundle`](https://github.com/DSPAtlas/dspa-nightingale-bundle).
+CI follows the bundle's `ames/dev` branch and copies its
+`nightingale-sequence`, `nightingale-structure`, and `nightingale-track` packages into
+`node_modules/@dspa-nightingale` after `npm ci`. Each run logs the resolved bundle
+commit so its results can be traced to the exact revision tested. The structure
+component must support `active-site-ranges`; older compiled files can render the
+React controls while silently ignoring active-site highlighting.
+
+When upgrading the bundle, push its updated source and compiled artifacts to
+`ames/dev` before running frontend CI. No workflow ref change is needed. Run the
+frontend production build and `npm run e2e -- e2e/visualize.spec.js` against that build
+with the new bundle installed. The active-site browser regression checks the
+real custom element's observed attribute, parsed property, update completion, and
+checkbox/legend behavior. It mocks API responses and does not test molecular pixel
+colors. Unit tests mock the structure package and cannot establish bundle compatibility.
+
 ## Backend API used by the frontend
 
 The frontend talks primarily to the DSPA backend through the relative base path configured in `src/config.json`:
